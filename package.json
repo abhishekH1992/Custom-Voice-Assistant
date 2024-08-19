@@ -13,7 +13,7 @@
   "license": "ISC",
   "dependencies": {
     "@apollo/server": "^4.11.0",
-    "@graphql-tools/merge": "^9.0.5",
+    "@graphql-tools/merge": "^9.0.6",
     "axios": "^1.7.3",
     "bcryptjs": "^2.4.3",
     "dotenv": "^16.4.5",
