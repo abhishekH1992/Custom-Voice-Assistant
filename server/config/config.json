@@ -4,7 +4,11 @@
         "password": "root",
         "database": "akoplus",
         "host": "localhost",
-        "dialect": "mysql"
+        "dialect": "mysql",
+        "dialectOptions": {
+            "socketPath" : "/Applications/MAMP/tmp/mysql/mysql.sock"
+        },
+        "port": 3306
     },
     "test": {
         "username": "root",
