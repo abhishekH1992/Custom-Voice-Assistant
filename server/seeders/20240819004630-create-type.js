@@ -10,6 +10,7 @@ module.exports = {
                 isAudio: true,
                 isActive: true,
                 isText: false,
+                icon: 'MicVocal',
                 createdAt: new Date(),
                 updatedAt: new Date(),
             },
@@ -20,6 +21,7 @@ module.exports = {
                 isActive: true,
                 isText: false,
                 duration: 5,
+                icon: 'Headphones',
                 createdAt: new Date(),
                 updatedAt: new Date()
             },
@@ -29,6 +31,7 @@ module.exports = {
                 isAudio: true,
                 isActive: true,
                 isText: false,
+                icon: 'Headset',
                 createdAt: new Date(),
                 updatedAt: new Date()
             },
@@ -38,6 +41,7 @@ module.exports = {
                 isAudio: false,
                 isActive: true,
                 isText: true,
+                icon: 'MessageSquareMore',
                 createdAt: new Date(),
                 updatedAt: new Date()
             }
@@ -45,11 +49,14 @@ module.exports = {
     },
 
     async down (queryInterface, Sequelize) {
-        /**
-         * Add commands to revert seed here.
-         *
-         * Example:
-         * await queryInterface.bulkDelete('People', null, {});
-         */
+        try {
+            await queryInterface.bulkDelete('Types', null, {
+                truncate: true,
+                cascade: true,
+                restartIdentity: true
+            });
+        } catch (error) {
+            console.error('An error occurred while deleting records:', error);
+        }
     }
 };
