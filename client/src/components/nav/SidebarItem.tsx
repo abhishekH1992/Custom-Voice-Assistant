@@ -27,11 +27,11 @@ const SidebarItem = ({ icon, text, active }: SidebarItemProps) => {
                 ${
                 active
                     ? theme === 'dark'
-                        ? "bg-gradient-to-tr from-indigo-800 to-indigo-900 text-indigo-100"
-                        : "bg-gradient-to-tr from-indigo-200 to-indigo-100 text-indigo-800"
+                        ? "bg-gradient-to-tr from-theme-800 to-theme-900 text-theme-100"
+                        : "bg-gradient-to-tr from-theme-200 to-theme-100 text-theme-800"
                     : theme === 'dark'
-                        ? "hover:bg-indigo-900 text-gray-400"
-                        : "hover:bg-indigo-50 text-gray-600"
+                        ? "hover:bg-theme-900 text-gray-400"
+                        : "hover:bg-theme-50 text-gray-600"
                 }
             `}
         >
@@ -47,7 +47,7 @@ const SidebarItem = ({ icon, text, active }: SidebarItemProps) => {
                 <div
                 className={`
                 absolute left-full rounded-md px-2 py-1 ml-6
-                ${theme === 'dark' ? 'bg-indigo-900 text-indigo-100' : 'bg-indigo-100 text-indigo-800'}
+                ${theme === 'dark' ? 'bg-theme-900 text-theme-100' : 'bg-theme-100 text-theme-800'}
                 text-sm
                 invisible opacity-20 -translate-x-3 transition-all
                 group-hover:visible group-hover:opacity-100 group-hover:translate-x-0

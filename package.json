@@ -21,8 +21,10 @@
     "express-session": "^1.18.0",
     "graphql": "^16.9.0",
     "graphql-passport": "^0.6.8",
+    "ioredis": "^5.4.1",
     "mysql2": "^3.11.0",
     "passport": "^0.7.0",
+    "redis": "^4.7.0",
     "sequelize": "^6.37.3",
     "sequelize-cli": "^6.6.2"
   },

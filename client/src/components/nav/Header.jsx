@@ -16,7 +16,7 @@ const Header = () => {
                         onChange={toggleTheme}
                         size="md"
                         classNames={{
-                            wrapper: "group-data-[selected=true]:bg-indigo-800",
+                            wrapper: "group-data-[selected=true]:bg-theme-800",
                         }}
                         startContent={<SunIcon />}
                         endContent={<MoonIcon />}

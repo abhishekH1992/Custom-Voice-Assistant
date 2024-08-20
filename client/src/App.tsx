@@ -3,7 +3,7 @@ import SideNav from './components/nav/SideNav';
 import SidebarItem from './components/nav/SidebarItem';
 import Header from './components/nav/Header';
 import { AudioLines } from 'lucide-react';
-import VoiceChat from "./pages/VoiceChat";
+import TemplateList from "./pages/TemplateList";
 
 function App() {
     return (
@@ -13,9 +13,9 @@ function App() {
             </SideNav>
             <main className="flex-1 flex flex-col overflow-hidden">
                 <Header />
-                <div className="flex-1 px-6 overflow-y-auto">
+                <div className="flex-1 px-6 overflow-y-auto sm:mt-6">
                     <Routes>
-                        <Route path='/' element={<VoiceChat />} />
+                        <Route path='/' element={<TemplateList />} />
                     </Routes>
                 </div>
             </main>

@@ -1,0 +1,1 @@
+export const TEMPLATE_ICON_COLOR = '#283593'; //text-theme-800
