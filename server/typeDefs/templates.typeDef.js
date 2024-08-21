@@ -11,6 +11,7 @@ const templatesTypeDef = `#graphql
     }
     type Query {
         templates(isActive: Boolean): [Templates!]
+        templateBySlug(slug: String!): Templates!
     }
 `;
 

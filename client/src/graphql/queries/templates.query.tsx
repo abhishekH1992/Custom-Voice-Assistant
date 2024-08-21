@@ -10,3 +10,17 @@ export const GET_TEMPLATES = gql`
         }
     }
 `;
+
+export const GET_TEMPLATE_BY_SLUG = gql`
+    query GetTemplateBySlug($slug: String!) {
+        templateBySlug(slug: $slug) {
+            id
+            aiRole
+            icon
+            slug
+            description
+            prompt
+            aiVoice
+        }
+    }
+`;

@@ -2,7 +2,7 @@ const { Template } = require('../models');
 
 const templatesResolver = {
     Query: {
-        templates: async (_, {isActive}) => {
+        templates: async(_, {isActive}) => {
             try {
                 if(isActive) {
                     const data = await Template.findAll({
@@ -20,6 +20,20 @@ const templatesResolver = {
                 throw new Error('Failed to fetch template');
             }
         },
+        templateBySlug: async(_, {slug}) => {
+            try {
+                const data = await Template.findOne({
+                    where: {
+                        slug: slug,
+                        isActive: true,
+                    }
+                });
+                return data;
+            } catch (error) {
+                console.error('Error fetching template by id:', error);
+                throw new Error('Failed to fetch template by id');
+            }
+        }
     },
 };
 

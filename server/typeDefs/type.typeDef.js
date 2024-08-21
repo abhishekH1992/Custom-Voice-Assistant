@@ -10,7 +10,7 @@ const typeTypeDef = `#graphql
         icon: String
     }
     type Query {
-        types: [Type!]
+        types(isActive: Boolean): [Type!]
     }
 `;
 

@@ -1,9 +1,10 @@
 import { Routes, Route } from 'react-router-dom';
 import SideNav from './components/nav/SideNav';
 import SidebarItem from './components/nav/SidebarItem';
-import Header from './components/nav/Header';
 import { AudioLines } from 'lucide-react';
 import TemplateList from "./pages/TemplateList";
+import Template from './pages/Template';
+
 
 function App() {
     return (
@@ -12,10 +13,10 @@ function App() {
                 <SidebarItem icon={<AudioLines size={20} />} text="Voice Chat" active />
             </SideNav>
             <main className="flex-1 flex flex-col overflow-hidden">
-                <Header />
-                <div className="flex-1 px-6 overflow-y-auto sm:mt-6">
+                <div className="flex-1 overflow-y-auto">
                     <Routes>
                         <Route path='/' element={<TemplateList />} />
+                        <Route path='/template/:templateSlug' element={<Template />} />
                     </Routes>
                 </div>
             </main>
