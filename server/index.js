@@ -7,16 +7,43 @@ const { ApolloServerPluginDrainHttpServer } = require('@apollo/server/plugin/dra
 const path = require('path');
 const mergedTypeDef = require('./typeDefs/index.js');
 const mergedResolver = require('./resolvers/index.js');
+const { WebSocketServer } = require('ws');
+const { useServer } = require('graphql-ws/lib/use/ws');
+const { makeExecutableSchema } = require('@graphql-tools/schema');
+const dotenv = require('dotenv');
 
+
+dotenv.config();
 const app = express();
 const httpServer = http.createServer(app);
 const PORT = process.env.PORT || 5000;
 
 async function startApolloServer() {
-    const server = new ApolloServer({
+    const schema = makeExecutableSchema({
         typeDefs: mergedTypeDef,
         resolvers: mergedResolver,
-        plugins: [ApolloServerPluginDrainHttpServer({ httpServer })],
+    });
+
+    const wsServer = new WebSocketServer({
+        server: httpServer,
+        path: '/graphql',
+    });
+
+    const serverCleanup = useServer({ schema }, wsServer);
+
+    const server = new ApolloServer({
+        schema,
+        plugins: [ApolloServerPluginDrainHttpServer({ httpServer }),
+            {
+                async serverWillStart() {
+                    return {
+                        async drainServer() {
+                            await serverCleanup.dispose();
+                        },
+                    };
+                },
+            },
+        ],
     });
 
     await server.start();
