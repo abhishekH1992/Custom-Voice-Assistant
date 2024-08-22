@@ -1,4 +1,3 @@
-import React from 'react';
 import { Card, CardHeader, CardBody, Skeleton } from "@nextui-org/react";
 
 const CardSkeleton = () => {

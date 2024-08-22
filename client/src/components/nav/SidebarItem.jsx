@@ -1,14 +1,8 @@
-import React, { useContext, ReactNode } from "react";
+import React, { useContext } from "react";
 import { SidebarContext } from "./SideNav";
 import { useTheme } from "../../context/ThemeContext";
 
-interface SidebarItemProps {
-  icon: ReactNode;
-  text: string;
-  active?: boolean;
-}
-
-const SidebarItem = ({ icon, text, active }: SidebarItemProps) => {
+const SidebarItem = ({ icon, text, active }) => {
     const context = useContext(SidebarContext);
     const { theme } = useTheme();
   

@@ -14,7 +14,8 @@ module.exports = (sequelize, DataTypes) => {
         aiVoice: DataTypes.INTEGER,
         icon: DataTypes.STRING,
         slug: DataTypes.STRING,
-        description: DataTypes.TEXT
+        description: DataTypes.TEXT,
+        model: DataTypes.STRING
     }, {
         sequelize,
         modelName: 'Template',

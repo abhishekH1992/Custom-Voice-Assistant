@@ -20,6 +20,8 @@ module.exports = {
                 brand: {
                     color: '#C7D2FE',
                     chatbg: '#FBDBA7',
+                    darkGrey: '#393937',
+                    darkBorder: '#4f4f4f'
                 },
                 theme: {
                     50: '#EEF2FF',
@@ -44,7 +46,13 @@ module.exports = {
         },
     },
     darkMode: "class",
-    plugins: [
-        nextui(),
-    ],
+    plugins: [nextui({
+        themes: {
+            dark: {
+                colors: {
+                    background: "#18181C",
+                },
+            },
+        },
+    })],
 }

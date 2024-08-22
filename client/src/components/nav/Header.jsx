@@ -3,24 +3,16 @@ import { useTheme } from "../../context/ThemeContext";
 import { SunIcon, MoonIcon } from 'lucide-react';
 import Icon from "../ui/Icon";
 import { TEMPLATE_ICON_COLOR } from "../../constant/colors";
-import * as LucidIcons from 'lucide-react';
 
-type IconName = keyof typeof LucidIcons;
-
-interface HeaderProps {
-    name?: string;
-    icon?: string
-}
-
-const Header = ({name, icon}: HeaderProps) => {
+const Header = ({name, icon}) => {
     const { theme, toggleTheme } = useTheme();
 
     return (
-        <Navbar position="static" isBordered isBlurred={true} maxWidth="full" className="z-auto">
+        <Navbar position="sticky" isBordered isBlurred={true} maxWidth="full">
             <NavbarBrand>
                 {icon && (
                     <Icon 
-                        name={icon as IconName} 
+                        name={icon} 
                         size={30}
                         color={TEMPLATE_ICON_COLOR}
                     />

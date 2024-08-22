@@ -1,14 +1,8 @@
 import React from 'react';
 import { Flower, UserRound } from 'lucide-react';
 
-interface MessageProps {
-  type: 'system' | 'user' | 'assistant';
-  content: string;
-  chart?: boolean;
-}
-
-const ChatMessage: React.FC<{ message: MessageProps }> = ({ message }) => {
-  const getIcon = (): JSX.Element | null => {
+const ChatMessage = ({ message }) => {
+  const getIcon = () => {
     switch (message.type) {
       case 'system':
         return (

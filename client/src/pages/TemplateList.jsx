@@ -6,19 +6,8 @@ import CardSkeleton from '../components/ui/CardSkeleton';
 import TemplateCard from "../components/ui/TemplateCard";
 import { Link } from "react-router-dom";
 
-interface Template {
-    aiRole: string;
-    icon: string;
-    description: string;
-    slug: string;
-}
-
-interface TemplatesQueryResult {
-    templates: Template[];
-}
-
 const TemplateChat = () => {
-    const { data, loading } = useQuery<TemplatesQueryResult>(GET_TEMPLATES, {
+    const { data, loading } = useQuery(GET_TEMPLATES, {
         variables: {
             isActive: true
         }
@@ -28,7 +17,7 @@ const TemplateChat = () => {
     return (
         <>
             <Header name="Simulator" />
-            <div className="px-6 sm:mt-6">
+            <div className="px-6 my-5 sm:mt-6">
                 <div className="grid grid-cols-1 gap-5 s:grid-cols-2 sm:grid-cols-2 md:grid-cols-3 max-w-940 m-auto">
                     {loading ? (
                         <>

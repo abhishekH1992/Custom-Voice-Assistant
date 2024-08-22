@@ -7,7 +7,7 @@ import './assets/scss/custom.scss';
 import { ThemeProvider } from './context/ThemeContext';
 
 const root = ReactDOM.createRoot(
-    document.getElementById('root') as HTMLElement
+    document.getElementById('root')
 );
 
 const client = new ApolloClient({

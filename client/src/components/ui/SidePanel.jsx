@@ -1,25 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Modal, ModalBody, Card, CardBody, CardFooter, Radio, RadioGroup } from "@nextui-org/react";
 
-export interface SidePanelProps {
-    isOpen: boolean;
-    onClose: () => void;
-    types: TypesProps[];
-    onTypeChange: (typeId: number) => void;
-}
-
-interface TypesProps {
-    id: number;
-    name: string;
-    description: string;
-    isAudio: boolean;
-    duration: number;
-    isText: boolean;
-    icon: string;
-}
-
-const SidePanel: React.FC<SidePanelProps> = ({ isOpen, onClose, types, onTypeChange }) => {
-    const [selectedType, setSelectedType] = useState<number | undefined>(undefined);
+const SidePanel = ({ isOpen, onClose, types, onTypeChange }) => {
+    const [selectedType, setSelectedType] = useState(undefined);
 
     useEffect(() => {
         if (types.length > 0 && !selectedType) {
@@ -28,7 +11,7 @@ const SidePanel: React.FC<SidePanelProps> = ({ isOpen, onClose, types, onTypeCha
         }
     }, [types, selectedType, onTypeChange]);
 
-    const handleTypeChange = (typeId: string) => {
+    const handleTypeChange = (typeId) => {
         const id = parseInt(typeId, 10);
         setSelectedType(id);
         onTypeChange(id);

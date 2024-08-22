@@ -1,19 +1,11 @@
-import React, { createContext, useState, ReactNode } from "react";
+import { createContext, useState } from "react";
 import { ChevronLast, ChevronFirst, MoreVertical } from "lucide-react";
 import { useTheme } from "../../context/ThemeContext";
 
-interface SidebarContextType {
-    expanded: boolean;
-}
+export const SidebarContext = createContext(undefined);
 
-export const SidebarContext = createContext<SidebarContextType | undefined>(undefined);
-
-interface SideNavProps {
-    children: ReactNode;
-}
-
-const SideNav = ({ children }: SideNavProps) => {
-    const [expanded, setExpanded] = useState<boolean>(true);
+const SideNav = ({ children }) => {
+    const [expanded, setExpanded] = useState(false);
     const { theme } = useTheme();
   
     return (

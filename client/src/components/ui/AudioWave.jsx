@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Mic, Phone } from 'lucide-react';
 
 const CallControlPanel = () => {

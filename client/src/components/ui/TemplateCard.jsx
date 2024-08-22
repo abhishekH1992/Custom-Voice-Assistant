@@ -1,22 +1,9 @@
-import React from 'react';
 import { Card, CardHeader, CardBody } from "@nextui-org/react";
 import Icon from './Icon';
 import { MoveRight } from 'lucide-react';
 import { TEMPLATE_ICON_COLOR } from '../../constant/colors';
-import * as LucidIcons from 'lucide-react';
 
-type IconName = keyof typeof LucidIcons;
-
-interface TemplateCardProps {
-    template: {
-        icon: string;
-        aiRole: string;
-        description: string;
-    };
-    theme: string;
-}
-
-const TemplateCard: React.FC<TemplateCardProps> = ({ template, theme }) => {
+const TemplateCard = ({ template, theme }) => {
     return (
         <Card className={`border-2 shadow-md ${
             theme === 'dark' 
@@ -25,7 +12,7 @@ const TemplateCard: React.FC<TemplateCardProps> = ({ template, theme }) => {
         }`}>
             <CardHeader className="justify-between">
                 <Icon 
-                    name={template.icon as IconName} 
+                    name={template.icon} 
                     size={30}
                     color={TEMPLATE_ICON_COLOR} 
                 />
