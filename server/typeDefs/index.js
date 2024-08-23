@@ -7,7 +7,8 @@ const conversationTypeDef = require('./conversation.typeDef.js');
 const mergedTypeDef = mergeTypeDefs([
     typeTypeDef,
     voiceTypeDef,
-    templatesTypeDef
+    templatesTypeDef,
+    conversationTypeDef
 ]);
 
 module.exports = mergedTypeDef;
