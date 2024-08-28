@@ -9,57 +9,65 @@ const { makeExecutableSchema } = require('@graphql-tools/schema');
 const cors = require('cors');
 const mergedTypeDef = require('./typeDefs/index.js');
 const mergedResolver = require('./resolvers/index.js');
+const path = require('path');
+const fs = require('fs');
 
 const app = express();
 const httpServer = http.createServer(app);
 const PORT = process.env.PORT || 5000;
 
+// Ensure temp directory exists
+const tempDir = path.join(__dirname, 'temp');
+if (!fs.existsSync(tempDir)){
+    fs.mkdirSync(tempDir);
+}
+
 const schema = makeExecutableSchema({
-  typeDefs: mergedTypeDef,
-  resolvers: mergedResolver,
+    typeDefs: mergedTypeDef,
+    resolvers: mergedResolver,
 });
 
 async function startApolloServer() {
-  const wsServer = new WebSocketServer({
-    server: httpServer,
-    path: '/graphql',
-  });
+    const wsServer = new WebSocketServer({
+        server: httpServer,
+        path: '/graphql',
+    });
 
-  const serverCleanup = useServer({ schema }, wsServer);
+    const serverCleanup = useServer({ schema }, wsServer);
 
-  const server = new ApolloServer({
-    schema,
-    plugins: [
-      ApolloServerPluginDrainHttpServer({ httpServer }),
-      {
-        async serverWillStart() {
-          return {
-            async drainServer() {
-              await serverCleanup.dispose();
+    const server = new ApolloServer({
+        schema,
+        plugins: [
+            ApolloServerPluginDrainHttpServer({ httpServer }),
+            {
+                async serverWillStart() {
+                    return {
+                        async drainServer() {
+                            await serverCleanup.dispose();
+                        },
+                    };
+                },
             },
-          };
-        },
-      },
-    ],
-  });
+        ],
+    });
 
-  await server.start();
+    await server.start();
 
-  app.use(
-    '/graphql',
-    cors({
-      origin: 'http://localhost:3000',
-      credentials: true,
-    }),
-    express.json(),
-    expressMiddleware(server, {
-      context: async ({ req }) => ({ token: req.headers.token }),
-    })
-  );
+    app.use(
+        '/graphql',
+        cors({
+            origin: 'http://localhost:3000',
+            credentials: true,
+        }),
+        express.json(),
+        expressMiddleware(server, {
+            context: async ({ req }) => ({ token: req.headers.token }),
+        })
+    );
 
-  await new Promise((resolve) => httpServer.listen({ port: PORT }, resolve));
-  console.log(`🚀 Server ready at http://localhost:${PORT}/graphql`);
-  console.log(`🚀 Subscriptions ready at ws://localhost:${PORT}/graphql`);
+    await new Promise((resolve) => httpServer.listen({ port: PORT }, resolve));
+    console.log(`🚀 Server ready at http://localhost:${PORT}/graphql`);
+    console.log(`🚀 Subscriptions ready at ws://localhost:${PORT}/graphql`);
 }
 
 startApolloServer();
