@@ -55,4 +55,21 @@ module.exports = {
             },
         },
     })],
+    safelist: [
+        'bg-blue-100',
+        'bg-gray-100',
+        'bg-gray-200',
+        'text-blue-600',
+        'border-gray-300',
+        'text-2xl',
+        'text-xl',
+        'text-lg',
+        'font-bold',
+        'font-mono',
+        'text-sm',
+        'list-disc',
+        'list-decimal',
+        'list-inside',
+        'italic',
+    ]
 }

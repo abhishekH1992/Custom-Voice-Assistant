@@ -1,46 +1,56 @@
+// src/components/ui/ChatMessage.jsx
 import React from 'react';
-import { Flower, UserRound } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { tomorrow } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
-const ChatMessage = ({ message }) => {
-  const getIcon = () => {
-    switch (message.type) {
-      case 'system':
-        return (
-            <Flower />
-        );
-      case 'user':
-        return (
-            <UserRound />
-        );
-      case 'assistant':
-        return (
-            <Flower />
-        );
-      default:
-        return null;
-    }
-  };
-
-  return (
-    <div className="group relative flex items-start md:-ml-12 mb-4">
-      <div className={`flex size-[25px] shrink-0 select-none items-center justify-center rounded-md border shadow-sm ${message.type === 'assistant' ? 'bg-primary text-primary-foreground' : 'bg-background'}`}>
-        {getIcon()}
-      </div>
-      <div className="ml-4 flex-1 space-y-2 overflow-hidden px-1">
-        <div className="prose dark:prose-invert prose-p:leading-relaxed prose-pre:p-0 break-words">
-          <p className="mb-2 last:mb-0">{message.content}</p>
+const ChatMessage = ({ message, isStreaming = false }) => {
+    return (
+        <div className={`mb-4 p-3 rounded-lg max-w-full ${
+            message.type === 'user' 
+                ? 'self-end bg-blue-100' 
+                : 'self-start bg-gray-100'
+        }`}>
+            <div className="message-content break-words">
+                {message.type === 'user' ? (
+                    <p>{message.content}</p>
+                ) : (
+                    <ReactMarkdown
+                        components={{
+                            code({node, inline, className, children, ...props}) {
+                                const match = /language-(\w+)/.exec(className || '')
+                                return !inline && match ? (
+                                    <SyntaxHighlighter
+                                        children={String(children).replace(/\n$/, '')}
+                                        style={tomorrow}
+                                        language={match[1]}
+                                        PreTag="div"
+                                        {...props}
+                                    />
+                                ) : (
+                                    <code className="bg-gray-200 px-1 py-0.5 rounded-sm font-mono text-sm" {...props}>
+                                        {children}
+                                    </code>
+                                )
+                            },
+                            p: ({node, ...props}) => <p className="mb-2" {...props} />,
+                            h1: ({node, ...props}) => <h1 className="text-2xl font-bold mb-2" {...props} />,
+                            h2: ({node, ...props}) => <h2 className="text-xl font-bold mb-2" {...props} />,
+                            h3: ({node, ...props}) => <h3 className="text-lg font-bold mb-2" {...props} />,
+                            ul: ({node, ...props}) => <ul className="list-disc list-inside mb-2" {...props} />,
+                            ol: ({node, ...props}) => <ol className="list-decimal list-inside mb-2" {...props} />,
+                            li: ({node, ...props}) => <li className="mb-1" {...props} />,
+                            a: ({node, ...props}) => <a className="text-blue-600 hover:underline" {...props} />,
+                            blockquote: ({node, ...props}) => <blockquote className="border-l-4 border-gray-300 pl-4 italic my-2" {...props} />,
+                        }}
+                    >
+                        {message.content}
+                    </ReactMarkdown>
+                )}
+            </div>
+            {isStreaming && <div className="streaming-indicator text-gray-500 italic">...</div>}
         </div>
-        {message.chart && (
-          <div className="rounded-xl border bg-zinc-950 p-4 text-green-400">
-            {/* You would replace this with your actual chart component */}
-            <div className="text-lg text-zinc-300">BTC</div>
-            <div className="text-3xl font-bold">$45000</div>
-            <div className="text mt-1 text-xs text-zinc-500">Closed: Feb 27, 4:59 PM EST</div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
+    );
 };
 
 export default ChatMessage;
