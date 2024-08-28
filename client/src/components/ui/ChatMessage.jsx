@@ -2,34 +2,36 @@ import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { tomorrow } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { Flower, UserRound } from 'lucide-react';
+import { useTheme } from '../../context/ThemeContext';
 
 const ChatMessage = ({ message }) => {
+    const { theme } = useTheme();
     const getIcon = () => {
-        switch (message.type) {
-          case 'system':
-            return (
-                <Flower />
-            );
-          case 'user':
-            return (
-                <UserRound />
-            );
-          case 'assistant':
-            return (
-                <Flower />
-            );
-          default:
-            return null;
+        switch (message.role) {
+            case 'system':
+                return (
+                    <Flower />
+                );
+            case 'user':
+                return (
+                    <UserRound />
+                );
+            case 'assistant':
+                return (
+                    <Flower />
+                );
+            default:
+                return null;
         }
     };
     
     return (
         <div className={`mb-4 p-3 rounded-lg max-w-full ${
-            message.type === 'user' 
-                ? 'self-end bg-theme-100' 
-                : 'self-start bg-gray-100'
+            message.role === 'user' 
+                ? theme === 'dark' ? 'self-end bg-theme-800' : 'self-end bg-theme-100' 
+                : theme === 'dark' ? 'self-start bg-gray-800' : 'self-start bg-gray-100'
         }`}>
-            <div className="flex gap-2 message-content break-words">
+            <div className="flex gap-2 md:gap-5 message-content break-words">
                 <div className="my-2">{getIcon()}</div>
                 <div>
                     <ReactMarkdown

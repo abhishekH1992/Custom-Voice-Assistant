@@ -6,15 +6,15 @@ const pubsub = new PubSub();
 
 const conversationResolver = {
       Mutation: {
-        sendMessage: async (_, { templateId, message }) => {
+        sendMessage: async (_, { templateId, messages }) => {
             try {
                 const template = await Template.findByPk(templateId);
-
+                
                 const stream = await textCompletion(
                     template.model,
                     [
                         { 'role': 'system', content: template.prompt },
-                        ...message
+                        ...messages
                     ],
                     true
                 );

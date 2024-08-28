@@ -1,6 +1,11 @@
 const conversationTypeDef = `#graphql
+    input InputMessage {
+        role: String!,
+        content: String!
+    }
+
     type Mutation {
-        sendMessage(templateId: ID!, message: String!): Boolean
+        sendMessage(templateId: ID!, messages: [InputMessage!]!): Boolean
     }
 
     type Subscription {

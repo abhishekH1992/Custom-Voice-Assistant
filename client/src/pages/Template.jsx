@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery, useMutation, useSubscription } from '@apollo/client';
 import Header from '../components/nav/Header';
@@ -13,6 +13,7 @@ const Template = () => {
     const { templateSlug } = useParams();
     const [messages, setMessages] = useState([]);
     const [currentStreamedMessage, setCurrentStreamedMessage] = useState('');
+    const [isTyping, setIsTyping] = useState(false);
     const isStreamingRef = useRef(false);
     const streamedMessageRef = useRef('');
     const chatContainerRef = useRef(null);
@@ -46,11 +47,14 @@ const Template = () => {
         onSubscriptionData: ({ subscriptionData }) => {
             const newContent = subscriptionData?.data?.messageStreamed;
             if (newContent !== undefined) {
+                if (streamedMessageRef.current === '') {
+                    setIsTyping(false);
+                }
                 streamedMessageRef.current += newContent;
                 setCurrentStreamedMessage(streamedMessageRef.current);
                 isStreamingRef.current = true;
             } else if (isStreamingRef.current) {
-                setMessages(prev => [...prev, { type: 'system', content: streamedMessageRef.current }]);
+                setMessages(prev => [...prev, { role: 'system', content: streamedMessageRef.current }]);
                 setCurrentStreamedMessage('');
                 streamedMessageRef.current = '';
                 isStreamingRef.current = false;
@@ -60,42 +64,54 @@ const Template = () => {
 
     useEffect(() => {
         if (!isStreamingRef.current && currentStreamedMessage) {
-            setMessages(prev => [...prev, { type: 'system', content: currentStreamedMessage }]);
+            setMessages(prev => [...prev, { role: 'system', content: currentStreamedMessage }]);
             setCurrentStreamedMessage('');
         }
     }, [currentStreamedMessage]);
 
-    if (loading || typeLoading) return <div className="flex items-center justify-center h-screen">Loading...</div>;
-
-    const handleSendMessage = async (message) => {
-        currentStreamedMessage ? 
-            setMessages(prevMessages => [...prevMessages, { type: 'system', content: currentStreamedMessage }, { type: 'user', content: message }]) :
-            setMessages(prevMessages => [...prevMessages, { type: 'user', content: message }])
-        setCurrentStreamedMessage('');
-        streamedMessageRef.current = '';
-        isStreamingRef.current = false;
+    const sendMessageToServer = useCallback(async (messages) => {
         try {
             await sendMessage({
                 variables: {
                     templateId: data?.templateBySlug?.id,
-                    message: message
+                    messages: messages
                 }
             });
         } catch (error) {
             console.error('Error sending message:', error);
         }
-    };
+    }, [data?.templateBySlug?.id, sendMessage]);
+
+    const handleSendMessage = useCallback((message) => {
+        setMessages(prevMessages => {
+            const newMessages = currentStreamedMessage
+                ? [...prevMessages, { role: 'system', content: currentStreamedMessage }, { role: 'user', content: message }]
+                : [...prevMessages, { role: 'user', content: message }];
+            sendMessageToServer(newMessages);
+            return newMessages;
+        });
+
+        setCurrentStreamedMessage('');
+        streamedMessageRef.current = '';
+        isStreamingRef.current = false;
+        setIsTyping(true);  // Set typing to true when a new message is sent
+    }, [currentStreamedMessage, sendMessageToServer]);
+
+    if (loading || typeLoading) return <div className="flex items-center justify-center h-screen">Loading...</div>;
 
     return (
         <>
             <Header name={data?.templateBySlug?.aiRole} icon={data?.templateBySlug?.icon} />
-            <div className="flex flex-col h-screen relative max-w-940 m-auto items-center overflow-hidden">
+            <div className="flex flex-col h-screen relative max-w-940 mx-auto items-center overflow-hidden">
                 <div ref={chatContainerRef} className="flex-grow w-full p-4 overflow-y-auto scrollbar-hide mb-40">
                     {messages.map((message, index) => (
-                        <ChatMessage key={`${message.type}-${index}`} message={message} />
+                        <ChatMessage key={`${message.role}-${index}`} message={message} />
                     ))}
                     {currentStreamedMessage && (
-                        <ChatMessage message={{ type: 'system', content: currentStreamedMessage }} isStreaming={true} />
+                        <ChatMessage message={{ role: 'system', content: currentStreamedMessage }} isStreaming={true} />
+                    )}
+                    {isTyping && !currentStreamedMessage && (
+                        <ChatMessage message={{ role: 'system', content: 'Thining...' }} isTyping={true} />
                     )}
                 </div>
                 <ChatBottom onSendMessage={handleSendMessage} />
