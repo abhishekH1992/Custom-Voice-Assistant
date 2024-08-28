@@ -1,14 +1,12 @@
-// src/components/ui/ChatMessage.jsx
-import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { tomorrow } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
-const ChatMessage = ({ message, isStreaming = false }) => {
+const ChatMessage = ({ message }) => {
     return (
         <div className={`mb-4 p-3 rounded-lg max-w-full ${
             message.type === 'user' 
-                ? 'self-end bg-blue-100' 
+                ? 'self-end bg-theme-100' 
                 : 'self-start bg-gray-100'
         }`}>
             <div className="message-content break-words">
@@ -48,7 +46,6 @@ const ChatMessage = ({ message, isStreaming = false }) => {
                     </ReactMarkdown>
                 )}
             </div>
-            {isStreaming && <div className="streaming-indicator text-gray-500 italic">...</div>}
         </div>
     );
 };

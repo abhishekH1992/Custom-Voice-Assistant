@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import { useState, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery, useMutation, useSubscription } from '@apollo/client';
 import Header from '../components/nav/Header';
@@ -37,8 +37,7 @@ const Template = () => {
                 setCurrentStreamedMessage(prev => prev + newContent);
                 isStreamingRef.current = true;
             } else if (isStreamingRef.current) {
-                // End of stream
-                setMessages(prev => [...prev, { type: 'ai', content: currentStreamedMessage }]);
+                setMessages(prev => [...prev, { type: 'system', content: currentStreamedMessage }]);
                 setCurrentStreamedMessage('');
                 isStreamingRef.current = false;
             }
@@ -51,7 +50,6 @@ const Template = () => {
         setMessages(prevMessages => [...prevMessages, { type: 'user', content: message }]);
         setCurrentStreamedMessage('');
         isStreamingRef.current = false;
-
         try {
             await sendMessage({
                 variables: {
@@ -65,22 +63,20 @@ const Template = () => {
     };
 
     return (
-        <div className="flex flex-col h-screen">
+        <>
             <Header name={data?.templateBySlug?.aiRole} icon={data?.templateBySlug?.icon} />
-            <div className="flex-grow overflow-hidden flex flex-col max-w-3xl mx-auto w-full">
-                <div className="flex-grow overflow-y-auto p-4 space-y-4">
+            <div className="flex flex-col h-screen relative max-w-940 m-auto items-center overflow-hidden">
+                <div className="flex-grow w-full p-4 overflow-y-auto scrollbar-hide mb-40">
                     {messages.map((message, index) => (
                         <ChatMessage key={`${message.type}-${index}`} message={message} />
                     ))}
                     {currentStreamedMessage && (
-                        <ChatMessage message={{ type: 'ai', content: currentStreamedMessage }} isStreaming={true} />
+                        <ChatMessage message={{ type: 'system', content: currentStreamedMessage }} />
                     )}
                 </div>
-                <div className="p-4">
-                    <ChatBottom onSendMessage={handleSendMessage} />
-                </div>
+                <ChatBottom onSendMessage={handleSendMessage} />
             </div>
-        </div>
+        </>
     );
 }
 
