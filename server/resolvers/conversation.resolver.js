@@ -3,6 +3,7 @@ const { PubSub } = require('graphql-subscriptions');
 const { textCompletion, transcribeAudio } = require('../utils/conversation.util');
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 
 const pubsub = new PubSub();
 
@@ -44,7 +45,7 @@ const conversationResolver = {
         stopRecording: async (_, { templateId }) => {
             const audioBuffer = Buffer.concat(audioChunks);
             const fileName = `audio_${Date.now()}.wav`;
-            const filePath = path.join(__dirname, '..', 'temp', fileName);
+            const filePath = path.join(os.tmpdir(), fileName);
             
             fs.writeFileSync(filePath, audioBuffer);
 
@@ -53,33 +54,23 @@ const conversationResolver = {
                 let fullTranscription = '';
 
                 for await (const part of transcriptionStream) {
-                    const transcriptionPart = part.alternatives[0]?.transcript || '';
+                    console.log(part);
+                    const transcriptionPart = part || '';
                     fullTranscription += transcriptionPart;
                     
                     pubsub.publish('MESSAGE_STREAMED', { 
-                        messageStreamed: { content: transcriptionPart, isUserMessage: true },
+                        messageStreamed: { content: part, isUserMessage: true },
                         templateId
                     });
                 }
 
                 fs.unlinkSync(filePath);
 
-                const template = await Template.findByPk(templateId);
-                const stream = await textCompletion(
-                    template.model,
-                    [
-                        { 'role': 'system', content: template.prompt },
-                        { 'role': 'user', content: fullTranscription }
-                    ],
-                    true
-                );
-                for await (const part of stream) {
-                    const content = part.choices[0]?.delta?.content || '';
-                    pubsub.publish('MESSAGE_STREAMED', { 
-                        messageStreamed: { content, isUserMessage: false },
-                        templateId
-                    });
-                }
+                // Send a final empty message to signal the end of transcription
+                pubsub.publish('MESSAGE_STREAMED', { 
+                    messageStreamed: { content: '', isUserMessage: true },
+                    templateId
+                });
 
                 return true;
             } catch (error) {
