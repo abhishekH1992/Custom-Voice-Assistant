@@ -6,7 +6,9 @@ const { ApolloServerPluginDrainHttpServer } = require('@apollo/server/plugin/dra
 const { WebSocketServer } = require('ws');
 const { useServer } = require('graphql-ws/lib/use/ws');
 const { makeExecutableSchema } = require('@graphql-tools/schema');
+const { graphqlUploadExpress } = require('graphql-upload-minimal'); // Updated import
 const cors = require('cors');
+const path = require('path');
 const mergedTypeDef = require('./typeDefs/index.js');
 const mergedResolver = require('./resolvers/index.js');
 
@@ -45,6 +47,7 @@ async function startApolloServer() {
 
   await server.start();
 
+  app.use('/audio', express.static(path.join(__dirname, 'public/audio')));
   app.use(
     '/graphql',
     cors({
@@ -52,6 +55,7 @@ async function startApolloServer() {
       credentials: true,
     }),
     express.json(),
+    graphqlUploadExpress(), // This middleware is from graphql-upload-minimal
     expressMiddleware(server, {
       context: async ({ req }) => ({ token: req.headers.token }),
     })

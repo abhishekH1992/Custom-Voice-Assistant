@@ -5,3 +5,9 @@ export const SEND_MESSAGE = gql`
         sendMessage(templateId: $templateId, messages: $messages)
     }
 `;
+
+export const SEND_AUDIO = gql`
+    mutation SendAudio($templateId: ID!, $audio: Upload!) {
+        sendAudio(templateId: $templateId, audio: $audio)
+    }
+`;

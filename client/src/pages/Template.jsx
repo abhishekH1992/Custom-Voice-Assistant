@@ -6,8 +6,9 @@ import { GET_TEMPLATE_BY_SLUG } from '../graphql/queries/templates.query';
 import { GET_ENABLE_TYPES } from '../graphql/queries/types.query';
 import ChatMessage from '../components/ui/ChatMessage';
 import ChatBottom from '../components/ui/ChatBottom';
-import { MESSAGE_SUBSCRIPTION } from '../graphql/subscriptions/conversation.subscription';
-import { SEND_MESSAGE } from '../graphql/mutations/conversation.mutation';
+import { MESSAGE_SUBSCRIPTION, AUDIO_SUBSCRIPTION } from '../graphql/subscriptions/conversation.subscription';
+import { SEND_MESSAGE, SEND_AUDIO } from '../graphql/mutations/conversation.mutation';
+
 
 const Template = () => {
     const { templateSlug } = useParams();
@@ -17,6 +18,11 @@ const Template = () => {
     const isStreamingRef = useRef(false);
     const streamedMessageRef = useRef('');
     const chatContainerRef = useRef(null);
+
+    const [isRecording, setIsRecording] = useState(false);
+    const [audioUrl, setAudioUrl] = useState(null);
+    const mediaRecorderRef = useRef(null);
+    const audioChunksRef = useRef([]);
 
     const { data, loading } = useQuery(GET_TEMPLATE_BY_SLUG, {
         variables: {
@@ -31,6 +37,7 @@ const Template = () => {
     });
 
     const [sendMessage] = useMutation(SEND_MESSAGE);
+    const [sendAudio] = useMutation(SEND_AUDIO);
 
     const scrollToBottom = () => {
         if (chatContainerRef.current) {
@@ -61,6 +68,61 @@ const Template = () => {
             }
         }
     });
+
+    const { data: audioSubscriptionData } = useSubscription(AUDIO_SUBSCRIPTION, {
+        variables: { templateId: data?.templateBySlug?.id },
+        onSubscriptionData: ({ subscriptionData }) => {
+            const newAudioUrl = subscriptionData?.data?.audioStreamed;
+            if (newAudioUrl) {
+                setAudioUrl(newAudioUrl);
+                setMessages(prev => [...prev, { role: 'system', content: 'Audio response', audioUrl: newAudioUrl }]);
+            }
+        }
+    });
+
+    const startRecording = useCallback(async () => {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mediaRecorderRef.current = new MediaRecorder(stream);
+            audioChunksRef.current = [];
+
+            mediaRecorderRef.current.ondataavailable = (event) => {
+                if (event.data.size > 0) {
+                    audioChunksRef.current.push(event.data);
+                }
+            };
+
+            mediaRecorderRef.current.onstop = async () => {
+                const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' });
+                await sendAudioToServer(audioBlob);
+            };
+
+            mediaRecorderRef.current.start();
+            setIsRecording(true);
+        } catch (error) {
+            console.error('Error starting recording:', error);
+        }
+    }, []);
+
+    const stopRecording = useCallback(() => {
+        if (mediaRecorderRef.current && isRecording) {
+            mediaRecorderRef.current.stop();
+            setIsRecording(false);
+        }
+    }, [isRecording]);
+
+    const sendAudioToServer = async (audioBlob) => {
+        try {
+            await sendAudio({
+                variables: {
+                    templateId: 1,
+                    audio: audioBlob
+                }
+            });
+        } catch (error) {
+            console.error('Error sending audio:', error);
+        }
+    };
 
     useEffect(() => {
         if (!isStreamingRef.current && currentStreamedMessage) {
@@ -114,7 +176,17 @@ const Template = () => {
                         <ChatMessage message={{ role: 'system', content: 'Thining...' }} isTyping={true} />
                     )}
                 </div>
-                <ChatBottom onSendMessage={handleSendMessage} />
+                <div className="fixed bottom-0 left-0 right-0 p-4 bg-white">
+                    {/* <ChatBottom onSendMessage={handleSendMessage} /> */}
+                    <div className="mt-2 flex justify-center">
+                        <button
+                            onClick={isRecording ? stopRecording : startRecording}
+                            className={`px-4 py-2 rounded ${isRecording ? 'bg-red-500' : 'bg-blue-500'} text-white`}
+                        >
+                            {isRecording ? 'Stop Recording' : 'Start Recording'}
+                        </button>
+                    </div>
+                </div>
             </div>
         </>
     );
