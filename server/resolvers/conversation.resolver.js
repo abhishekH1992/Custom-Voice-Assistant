@@ -37,52 +37,51 @@ const conversationResolver = {
                 return false;
             }
         },
-        // startRecording: () => {
-        //     audioChunks = [];
-        //     console.log('Started recording');
-        //     return true;
-        // },
-        // stopRecording: async (_, { templateId }) => {
-        //     const audioBuffer = Buffer.concat(audioChunks);
-        //     const fileName = `audio_${Date.now()}.wav`;
-        //     const filePath = path.join(os.tmpdir(), fileName);
+        startRecording: () => {
+            audioChunks = [];
+            console.log('Started recording');
+            return true;
+        },
+        stopRecording: async (_, { templateId }) => {
+            const audioBuffer = Buffer.concat(audioChunks);
+            const fileName = `audio_${Date.now()}.wav`;
+            const filePath = path.join(os.tmpdir(), fileName);
             
-        //     fs.writeFileSync(filePath, audioBuffer);
+            fs.writeFileSync(filePath, audioBuffer);
 
-        //     try {
-        //         const transcriptionStream = await transcribeAudio(filePath);
-        //         let fullTranscription = '';
+            try {
+                const transcriptionStream = await transcribeAudio(filePath);
+                let fullTranscription = '';
 
-        //         for await (const part of transcriptionStream) {
-        //             console.log(part);
-        //             const transcriptionPart = part || '';
-        //             fullTranscription += transcriptionPart;
+                for await (const part of transcriptionStream) {
+                    const transcriptionPart = part || '';
+                    fullTranscription += transcriptionPart;
                     
-        //             pubsub.publish('MESSAGE_STREAMED', { 
-        //                 messageStreamed: { content: part, isUserMessage: true },
-        //                 templateId
-        //             });
-        //         }
+                    pubsub.publish('MESSAGE_STREAMED', { 
+                        messageStreamed: { content: part, isUserMessage: true },
+                        templateId
+                    });
+                }
 
-        //         fs.unlinkSync(filePath);
+                fs.unlinkSync(filePath);
 
-        //         // Send a final empty message to signal the end of transcription
-        //         pubsub.publish('MESSAGE_STREAMED', { 
-        //             messageStreamed: { content: '', isUserMessage: true },
-        //             templateId
-        //         });
+                // Send a final empty message to signal the end of transcription
+                pubsub.publish('MESSAGE_STREAMED', { 
+                    messageStreamed: { content: '', isUserMessage: true },
+                    templateId
+                });
 
-        //         return true;
-        //     } catch (error) {
-        //         console.error('Error transcribing audio:', error);
-        //         return false;
-        //     }
-        // },
-        // sendAudioData: (_, { data }) => {
-        //     const audioData = Buffer.from(data, 'base64');
-        //     audioChunks.push(audioData);
-        //     return true;
-        // },
+                return true;
+            } catch (error) {
+                console.error('Error transcribing audio:', error);
+                return false;
+            }
+        },
+        sendAudioData: (_, { data }) => {
+            const audioData = Buffer.from(data, 'base64');
+            audioChunks.push(audioData);
+            return true;
+        },
     },
     Subscription: {
         messageStreamed: {

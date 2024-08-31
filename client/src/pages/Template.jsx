@@ -15,7 +15,7 @@ const Template = () => {
     const [currentStreamedMessage, setCurrentStreamedMessage] = useState('');
     const [currentUserMessage, setCurrentUserMessage] = useState('');
     const [isTyping, setIsTyping] = useState(false);
-    const [isAudioChatType, setIsAudioChatType] = useState(false);
+    const [isAudioChatType, setIsAudioChatType] = useState(true);
     const isStreamingRef = useRef(false);
     const streamedMessageRef = useRef('');
     const userMessageRef = useRef('');

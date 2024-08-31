@@ -4,6 +4,11 @@ const conversationTypeDef = `#graphql
         content: String!
     }
 
+    type StreamedContent {
+        content: String!,
+        isUserMessage: Boolean!
+    }
+
     type Mutation {
         sendMessage(templateId: ID!, messages: [InputMessage!]!): Boolean
         startRecording: Boolean
@@ -12,7 +17,7 @@ const conversationTypeDef = `#graphql
     }
 
     type Subscription {
-        messageStreamed(templateId: ID!): String
+        messageStreamed(templateId: ID!): StreamedContent!
     }
 `;
 
