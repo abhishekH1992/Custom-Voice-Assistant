@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery, useMutation, useSubscription } from '@apollo/client';
 import Header from '../components/nav/Header';
@@ -13,25 +13,21 @@ const Template = () => {
     const { templateSlug } = useParams();
     const [messages, setMessages] = useState([]);
     const [currentStreamedMessage, setCurrentStreamedMessage] = useState('');
-    const [currentUserMessage, setCurrentUserMessage] = useState('');
     const [isTyping, setIsTyping] = useState(false);
     const [isAudioChatType, setIsAudioChatType] = useState(true);
+    const [isRecording, setIsRecording] = useState(false);
     const isStreamingRef = useRef(false);
     const streamedMessageRef = useRef('');
-    const userMessageRef = useRef('');
+    const currentRoleRef = useRef('');
     const chatContainerRef = useRef(null);
     const mediaRecorderRef = useRef(null);
 
     const { data, loading } = useQuery(GET_TEMPLATE_BY_SLUG, {
-        variables: {
-            slug: templateSlug
-        }
+        variables: { slug: templateSlug }
     });
 
     const { data: enableTypes, loading: typeLoading } = useQuery(GET_ENABLE_TYPES, {
-        variables: {
-            isActive: true
-        }
+        variables: { isActive: true }
     });
 
     const [sendMessage] = useMutation(SEND_MESSAGE);
@@ -39,44 +35,43 @@ const Template = () => {
     const [stopRecording] = useMutation(STOP_RECORDING);
     const [sendAudioData] = useMutation(SEND_AUDIO_DATA);
 
-    const scrollToBottom = () => {
+    const scrollToBottom = useCallback(() => {
         if (chatContainerRef.current) {
             chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
         }
-    };
+    }, []);
 
     useEffect(() => {
         scrollToBottom();
-    }, [messages, currentStreamedMessage, currentUserMessage]);
+    }, [messages, currentStreamedMessage, scrollToBottom]);
 
-    const { data: subscriptionData } = useSubscription(MESSAGE_SUBSCRIPTION, {
+    const handleMessageStreamed = useCallback(({ content, isUserMessage }) => {
+        if (content !== undefined) {
+            setIsTyping(false);
+            if (streamedMessageRef.current === '') {
+                currentRoleRef.current = isUserMessage ? 'user' : 'system';
+            }
+            streamedMessageRef.current += content;
+            setCurrentStreamedMessage(prevMessage => prevMessage + content);
+            isStreamingRef.current = true;
+        } else if (isStreamingRef.current) {
+            setMessages(prev => [
+                ...prev, 
+                { role: currentRoleRef.current, content: streamedMessageRef.current }
+            ]);
+            setCurrentStreamedMessage('');
+            streamedMessageRef.current = '';
+            currentRoleRef.current = '';
+            isStreamingRef.current = false;
+            setIsTyping(true);
+        }
+    }, []);
+
+    useSubscription(MESSAGE_SUBSCRIPTION, {
         variables: { templateId: data?.templateBySlug?.id },
         onSubscriptionData: ({ subscriptionData }) => {
-            const { content, isUserMessage } = subscriptionData?.data?.messageStreamed;
-            if (content !== undefined) {
-                if (isUserMessage) {
-                    userMessageRef.current += content;
-                    setCurrentUserMessage(userMessageRef.current);
-                } else {
-                    if (streamedMessageRef.current === '') {
-                        setIsTyping(false);
-                    }
-                    streamedMessageRef.current += content;
-                    setCurrentStreamedMessage(streamedMessageRef.current);
-                    isStreamingRef.current = true;
-                }
-            } else if (isStreamingRef.current) {
-                setMessages(prev => [
-                    ...prev, 
-                    { role: 'user', content: userMessageRef.current },
-                    { role: 'system', content: streamedMessageRef.current }
-                ]);
-                setCurrentStreamedMessage('');
-                setCurrentUserMessage('');
-                streamedMessageRef.current = '';
-                userMessageRef.current = '';
-                isStreamingRef.current = false;
-            }
+            const { messageStreamed } = subscriptionData.data;
+            handleMessageStreamed(messageStreamed);
         }
     });
 
@@ -96,7 +91,7 @@ const Template = () => {
     const handleSendMessage = useCallback((message) => {
         setMessages(prevMessages => {
             const newMessages = currentStreamedMessage
-                ? [...prevMessages, { role: 'system', content: currentStreamedMessage }, { role: 'user', content: message }]
+                ? [...prevMessages, { role: currentRoleRef.current, content: currentStreamedMessage }, { role: 'user', content: message }]
                 : [...prevMessages, { role: 'user', content: message }];
             sendMessageToServer(newMessages);
             return newMessages;
@@ -104,17 +99,22 @@ const Template = () => {
 
         setCurrentStreamedMessage('');
         streamedMessageRef.current = '';
+        currentRoleRef.current = '';
         isStreamingRef.current = false;
         setIsTyping(true);
     }, [currentStreamedMessage, sendMessageToServer]);
 
     const handleStartRecording = useCallback(async () => {
         try {
+            if(currentStreamedMessage) {
+                setMessages(prevMessages => {
+                    const newMessages = [...prevMessages, { role: currentRoleRef.current, content: currentStreamedMessage }];
+                    return newMessages;
+                });
+            }
             await startRecording();
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            mediaRecorderRef.current = new MediaRecorder(stream, {
-                mimeType: 'audio/webm',
-            });
+            mediaRecorderRef.current = new MediaRecorder(stream, { mimeType: 'audio/webm' });
 
             mediaRecorderRef.current.ondataavailable = async (event) => {
                 if (event.data.size > 0) {
@@ -128,6 +128,8 @@ const Template = () => {
             };
 
             mediaRecorderRef.current.start(250);
+            setIsRecording(true);
+            currentRoleRef.current = 'user';
         } catch (error) {
             console.error('Error starting recording:', error);
         }
@@ -137,9 +139,7 @@ const Template = () => {
         if (mediaRecorderRef.current) {
             mediaRecorderRef.current.stop();
             await stopRecording({ variables: { templateId: data?.templateBySlug?.id } });
-            setIsTyping(true);
-            userMessageRef.current = '';
-            setCurrentUserMessage('');
+            setIsRecording(false);
         }
     }, [stopRecording, data?.templateBySlug?.id]);
 
@@ -153,14 +153,16 @@ const Template = () => {
                     {messages.map((message, index) => (
                         <ChatMessage key={`${message.role}-${index}`} message={message} />
                     ))}
-                    {currentUserMessage && (
-                        <ChatMessage message={{ role: 'user', content: currentUserMessage }} isStreaming={true} />
-                    )}
-                    {currentStreamedMessage && (
-                        <ChatMessage message={{ role: 'system', content: currentStreamedMessage }} isStreaming={true} />
-                    )}
-                    {isTyping && !currentStreamedMessage && !currentUserMessage && (
-                        <ChatMessage message={{ role: 'system', content: 'Thinking...' }} isTyping={true} />
+                    {(isRecording || currentStreamedMessage) && (
+                        <ChatMessage 
+                            message={{ 
+                                role: currentRoleRef.current || 'system', 
+                                content: isRecording ? 'Recording...' : 
+                                         !isRecording && !currentStreamedMessage ? 'Transcribing...' : 
+                                         currentStreamedMessage 
+                            }} 
+                            isStreaming={true} 
+                        />
                     )}
                 </div>
                 <ChatBottom 
@@ -168,10 +170,11 @@ const Template = () => {
                     isAudioChatType={isAudioChatType}
                     onStartRecording={handleStartRecording}
                     onStopRecording={handleStopRecording}
+                    isRecording={isRecording}
                 />
             </div>
         </>
     );
-}
+};
 
 export default Template;
