@@ -51,6 +51,7 @@ const Template = () => {
             if (streamedMessageRef.current === '') {
                 currentRoleRef.current = isUserMessage ? 'user' : 'system';
             }
+            console.log(content, isUserMessage, currentRoleRef);
             streamedMessageRef.current += content;
             setCurrentStreamedMessage(prevMessage => prevMessage + content);
             isStreamingRef.current = true;
@@ -112,6 +113,7 @@ const Template = () => {
                     return newMessages;
                 });
             }
+            setCurrentStreamedMessage('');
             await startRecording();
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             mediaRecorderRef.current = new MediaRecorder(stream, { mimeType: 'audio/webm' });
@@ -133,15 +135,22 @@ const Template = () => {
         } catch (error) {
             console.error('Error starting recording:', error);
         }
-    }, [startRecording, sendAudioData]);
+    }, [currentStreamedMessage, startRecording, sendAudioData]);
 
     const handleStopRecording = useCallback(async () => {
         if (mediaRecorderRef.current) {
             mediaRecorderRef.current.stop();
-            await stopRecording({ variables: { templateId: data?.templateBySlug?.id } });
             setIsRecording(false);
+            await stopRecording(
+                {
+                    variables: {
+                        templateId: data?.templateBySlug?.id,
+                        messages: messages
+                    } 
+                }
+            );
         }
-    }, [stopRecording, data?.templateBySlug?.id]);
+    }, [stopRecording, data?.templateBySlug?.id, messages]);
 
     if (loading || typeLoading) return <div className="flex items-center justify-center h-screen">Loading...</div>;
 

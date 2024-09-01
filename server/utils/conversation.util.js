@@ -16,6 +16,7 @@ const transcribeAudio = async(filePath) => {
         const transcription = await openai.audio.transcriptions.create({
             file: fs.createReadStream(filePath),
             model: 'whisper-1',
+            stream: true
         });
         return transcription.text;
     } catch (error) {

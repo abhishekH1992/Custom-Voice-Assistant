@@ -13,8 +13,8 @@ export const START_RECORDING = gql`
 `;
 
 export const STOP_RECORDING = gql`
-    mutation StopRecording($templateId: ID!) {
-        stopRecording(templateId: $templateId)
+    mutation StopRecording($templateId: ID!, $messages: [InputMessage!]!) {
+        stopRecording(templateId: $templateId, messages: $messages)
     }
 `;
 

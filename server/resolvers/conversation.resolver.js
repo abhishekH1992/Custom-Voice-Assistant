@@ -42,7 +42,7 @@ const conversationResolver = {
             console.log('Started recording');
             return true;
         },
-        stopRecording: async (_, { templateId }) => {
+        stopRecording: async (_, { templateId, messages }) => {
             const audioBuffer = Buffer.concat(audioChunks);
             const fileName = `audio_${Date.now()}.wav`;
             const filePath = path.join(os.tmpdir(), fileName);
@@ -52,7 +52,7 @@ const conversationResolver = {
             try {
                 const transcriptionStream = await transcribeAudio(filePath);
                 let fullTranscription = '';
-
+                //first stream
                 for await (const part of transcriptionStream) {
                     const transcriptionPart = part || '';
                     fullTranscription += transcriptionPart;
@@ -63,13 +63,32 @@ const conversationResolver = {
                     });
                 }
 
-                fs.unlinkSync(filePath);
-
-                // Send a final empty message to signal the end of transcription
                 pubsub.publish('MESSAGE_STREAMED', { 
-                    messageStreamed: { content: '', isUserMessage: true },
+                    messageStreamed: { content: '', isUserMessage: false },
                     templateId
                 });
+
+                fs.unlinkSync(filePath);
+
+                const template = await Template.findByPk(templateId);
+                
+                // System response stream
+                const stream = await textCompletion(
+                    template.model,
+                    [
+                        { 'role': 'system', content: template.prompt },
+                        ...messages,
+                        { 'role': 'user', content: fullTranscription }
+                    ],
+                    true
+                );
+                for await (const part of stream) {
+                    const content = part.choices[0]?.delta?.content || '';
+                    pubsub.publish('MESSAGE_STREAMED', { 
+                        messageStreamed: { content, isUserMessage: false },
+                        templateId 
+                    });
+                }
 
                 return true;
             } catch (error) {
