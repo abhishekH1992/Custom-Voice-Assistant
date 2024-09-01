@@ -6,7 +6,7 @@ import { GET_TEMPLATE_BY_SLUG } from '../graphql/queries/templates.query';
 import { GET_ENABLE_TYPES } from '../graphql/queries/types.query';
 import ChatMessage from '../components/ui/ChatMessage';
 import ChatBottom from '../components/ui/ChatBottom';
-import { MESSAGE_SUBSCRIPTION } from '../graphql/subscriptions/conversation.subscription';
+import { MESSAGE_SUBSCRIPTION, AUDIO_SUBSCRIPTION } from '../graphql/subscriptions/conversation.subscription';
 import { SEND_MESSAGE, START_RECORDING, STOP_RECORDING, SEND_AUDIO_DATA } from '../graphql/mutations/conversation.mutation';
 
 const Template = () => {
@@ -16,11 +16,14 @@ const Template = () => {
     const [isTyping, setIsTyping] = useState(false);
     const [isAudioChatType, setIsAudioChatType] = useState(true);
     const [isRecording, setIsRecording] = useState(false);
+    const [audioQueue, setAudioQueue] = useState([]);
+    const [isPlaying, setIsPlaying] = useState(false);
+    const [isLastChunkReceived, setIsLastChunkReceived] = useState(false);
     const isStreamingRef = useRef(false);
-    const streamedMessageRef = useRef('');
     const currentRoleRef = useRef('');
     const chatContainerRef = useRef(null);
     const mediaRecorderRef = useRef(null);
+    const audioRef = useRef(new Audio());
 
     const { data, loading } = useQuery(GET_TEMPLATE_BY_SLUG, {
         variables: { slug: templateSlug }
@@ -48,20 +51,14 @@ const Template = () => {
     const handleMessageStreamed = useCallback(({ content, isUserMessage }) => {
         if (content !== undefined) {
             setIsTyping(false);
-            if (streamedMessageRef.current === '') {
+            if (!isStreamingRef.current) {
                 currentRoleRef.current = isUserMessage ? 'user' : 'system';
+                isStreamingRef.current = true;
             }
-            console.log(content, isUserMessage, currentRoleRef);
-            streamedMessageRef.current += content;
             setCurrentStreamedMessage(prevMessage => prevMessage + content);
-            isStreamingRef.current = true;
         } else if (isStreamingRef.current) {
-            setMessages(prev => [
-                ...prev, 
-                { role: currentRoleRef.current, content: streamedMessageRef.current }
-            ]);
+            setMessages(prevMessages => [...prevMessages, { role: currentRoleRef.current, content: currentStreamedMessage }]);
             setCurrentStreamedMessage('');
-            streamedMessageRef.current = '';
             currentRoleRef.current = '';
             isStreamingRef.current = false;
             setIsTyping(true);
@@ -75,6 +72,65 @@ const Template = () => {
             handleMessageStreamed(messageStreamed);
         }
     });
+
+    useSubscription(AUDIO_SUBSCRIPTION, {
+        variables: { templateId: data?.templateBySlug?.id },
+        onSubscriptionData: ({ subscriptionData }) => {
+            const { audioStreamed } = subscriptionData.data;
+            if (audioStreamed && audioStreamed.audio) {
+                setAudioQueue(prevQueue => [...prevQueue, audioStreamed.audio]);
+                if (audioStreamed.isLast) {
+                    setIsLastChunkReceived(true);
+                }
+            }
+        }
+    });
+
+    useEffect(() => {
+        const playNextAudio = () => {
+            if (audioQueue.length > 0 && !isPlaying) {
+                setIsPlaying(true);
+                const audioChunk = audioQueue[0];
+                const byteCharacters = atob(audioChunk);
+                const byteNumbers = new Array(byteCharacters.length);
+                for (let i = 0; i < byteCharacters.length; i++) {
+                    byteNumbers[i] = byteCharacters.charCodeAt(i);
+                }
+                const byteArray = new Uint8Array(byteNumbers);
+                const blob = new Blob([byteArray], { type: 'audio/mpeg' });
+                
+                const audioUrl = URL.createObjectURL(blob);
+                audioRef.current.src = audioUrl;
+                
+                audioRef.current.onended = () => {
+                    URL.revokeObjectURL(audioUrl);
+                    setAudioQueue(prevQueue => prevQueue.slice(1));
+                    setIsPlaying(false);
+                };
+
+                audioRef.current.onerror = (error) => {
+                    console.error('Error playing audio:', error);
+                    URL.revokeObjectURL(audioUrl);
+                    setAudioQueue(prevQueue => prevQueue.slice(1));
+                    setIsPlaying(false);
+                };
+
+                audioRef.current.play().catch(error => {
+                    console.error('Error starting audio playback:', error);
+                    URL.revokeObjectURL(audioUrl);
+                    setAudioQueue(prevQueue => prevQueue.slice(1));
+                    setIsPlaying(false);
+                });
+            }
+        };
+
+        playNextAudio();
+
+        if (audioQueue.length === 0 && isLastChunkReceived) {
+            console.log('Finished playing all audio chunks');
+            setIsLastChunkReceived(false);
+        }
+    }, [audioQueue, isPlaying, isLastChunkReceived]);
 
     const sendMessageToServer = useCallback(async (messages) => {
         try {
@@ -91,29 +147,15 @@ const Template = () => {
 
     const handleSendMessage = useCallback((message) => {
         setMessages(prevMessages => {
-            const newMessages = currentStreamedMessage
-                ? [...prevMessages, { role: currentRoleRef.current, content: currentStreamedMessage }, { role: 'user', content: message }]
-                : [...prevMessages, { role: 'user', content: message }];
+            const newMessages = [...prevMessages, { role: 'user', content: message }];
             sendMessageToServer(newMessages);
             return newMessages;
         });
-
-        setCurrentStreamedMessage('');
-        streamedMessageRef.current = '';
-        currentRoleRef.current = '';
-        isStreamingRef.current = false;
         setIsTyping(true);
-    }, [currentStreamedMessage, sendMessageToServer]);
+    }, [sendMessageToServer]);
 
     const handleStartRecording = useCallback(async () => {
         try {
-            if(currentStreamedMessage) {
-                setMessages(prevMessages => {
-                    const newMessages = [...prevMessages, { role: currentRoleRef.current, content: currentStreamedMessage }];
-                    return newMessages;
-                });
-            }
-            setCurrentStreamedMessage('');
             await startRecording();
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             mediaRecorderRef.current = new MediaRecorder(stream, { mimeType: 'audio/webm' });
@@ -131,24 +173,21 @@ const Template = () => {
 
             mediaRecorderRef.current.start(250);
             setIsRecording(true);
-            currentRoleRef.current = 'user';
         } catch (error) {
             console.error('Error starting recording:', error);
         }
-    }, [currentStreamedMessage, startRecording, sendAudioData]);
+    }, [startRecording, sendAudioData]);
 
     const handleStopRecording = useCallback(async () => {
         if (mediaRecorderRef.current) {
             mediaRecorderRef.current.stop();
             setIsRecording(false);
-            await stopRecording(
-                {
-                    variables: {
-                        templateId: data?.templateBySlug?.id,
-                        messages: messages
-                    } 
+            await stopRecording({
+                variables: {
+                    templateId: data?.templateBySlug?.id,
+                    messages: messages
                 }
-            );
+            });
         }
     }, [stopRecording, data?.templateBySlug?.id, messages]);
 
@@ -170,7 +209,6 @@ const Template = () => {
                                          !isRecording && !currentStreamedMessage ? 'Transcribing...' : 
                                          currentStreamedMessage 
                             }} 
-                            isStreaming={true} 
                         />
                     )}
                 </div>

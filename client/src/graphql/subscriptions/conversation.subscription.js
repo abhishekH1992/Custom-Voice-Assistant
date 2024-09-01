@@ -8,3 +8,11 @@ export const MESSAGE_SUBSCRIPTION = gql`
         }
     }
 `;
+
+export const AUDIO_SUBSCRIPTION = gql`
+    subscription AudioStreamed($templateId: ID!) {
+        audioStreamed(templateId: $templateId) {
+            audio
+        }
+    }
+`;
