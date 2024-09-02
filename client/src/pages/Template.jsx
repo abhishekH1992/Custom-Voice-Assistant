@@ -17,6 +17,7 @@ const Template = () => {
     const isStreamingRef = useRef(false);
     const streamedMessageRef = useRef('');
     const chatContainerRef = useRef(null);
+    const [isTypeAudio, setIsTypeAudio] = useState(false);
 
     const { data, loading } = useQuery(GET_TEMPLATE_BY_SLUG, {
         variables: {
@@ -94,7 +95,7 @@ const Template = () => {
         setCurrentStreamedMessage('');
         streamedMessageRef.current = '';
         isStreamingRef.current = false;
-        setIsTyping(true);  // Set typing to true when a new message is sent
+        setIsTyping(true);
     }, [currentStreamedMessage, sendMessageToServer]);
 
     if (loading || typeLoading) return <div className="flex items-center justify-center h-screen">Loading...</div>;
@@ -114,7 +115,10 @@ const Template = () => {
                         <ChatMessage message={{ role: 'system', content: 'Thining...' }} isTyping={true} />
                     )}
                 </div>
-                <ChatBottom onSendMessage={handleSendMessage} />
+                <ChatBottom 
+                    isTypeAudio={isTypeAudio}
+                    onSendMessage={handleSendMessage}
+                />
             </div>
         </>
     );

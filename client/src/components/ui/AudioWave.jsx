@@ -3,7 +3,6 @@ import { Mic, Phone } from 'lucide-react';
 
 const CallControlPanel = () => {
     const [isMicOn, setIsMicOn] = useState(true);
-
     const toggleMic = () => setIsMicOn(!isMicOn);
 
     return (
