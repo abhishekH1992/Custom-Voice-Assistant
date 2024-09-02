@@ -14,7 +14,7 @@ const Template = () => {
     const [messages, setMessages] = useState([]);
     const [currentStreamedMessage, setCurrentStreamedMessage] = useState('');
     const [isTyping, setIsTyping] = useState(false);
-    const [isAudioChatType, setIsAudioChatType] = useState(true);
+    const [isAudioChatType, setIsAudioChatType] = useState(false);
     const [isRecording, setIsRecording] = useState(false);
     const [audioQueue, setAudioQueue] = useState([]);
     const [isPlaying, setIsPlaying] = useState(false);
@@ -48,12 +48,11 @@ const Template = () => {
         scrollToBottom();
     }, [messages, currentStreamedMessage, scrollToBottom]);
 
-    const handleMessageStreamed = useCallback(({ content, isUserMessage }) => {
+    const handleMessageStreamed = useCallback(({ content }) => {
         if (content !== undefined) {
             setIsTyping(false);
-            if (!isStreamingRef.current) {
-                currentRoleRef.current = isUserMessage ? 'user' : 'system';
-                isStreamingRef.current = true;
+            if(isStreamingRef.current === '') {
+                currentRoleRef.current = 
             }
             setCurrentStreamedMessage(prevMessage => prevMessage + content);
         } else if (isStreamingRef.current) {
