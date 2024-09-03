@@ -5,7 +5,7 @@ const { textCompletion } = require('../utils/conversation.util');
 const pubsub = new PubSub();
 
 const conversationResolver = {
-      Mutation: {
+    Mutation: {
         sendMessage: async (_, { templateId, messages }) => {
             try {
                 const template = await Template.findByPk(templateId);
@@ -29,18 +29,25 @@ const conversationResolver = {
                 return false;
             }
         },
-      },
-      Subscription: {
+        addSpeechText: (_, { text }) => {
+            pubsub.publish(SPEECH_UPDATED, { speechUpdated: text });
+            return true;
+        }
+    },
+    Subscription: {
         messageStreamed: {
-          subscribe: (_, { templateId }) => pubsub.asyncIterator(['MESSAGE_STREAMED']),
-          resolve: (payload, variables) => {
-            if (payload.templateId === variables.templateId) {
-              return payload.messageStreamed;
-            }
-            return null;
-          },
+            subscribe: (_, { templateId }) => pubsub.asyncIterator(['MESSAGE_STREAMED']),
+            resolve: (payload, variables) => {
+                if (payload.templateId === variables.templateId) {
+                    return payload.messageStreamed;
+                }
+                return null;
+            },
         },
-      },
+        speechUpdated: {
+            subscribe: () => pubsub.asyncIterator([SPEECH_UPDATED])
+        }
+    },
 };
 
 module.exports = conversationResolver;
