@@ -7,7 +7,7 @@ import { GET_ENABLE_TYPES } from '../graphql/queries/types.query';
 import ChatMessage from '../components/ui/ChatMessage';
 import ChatBottom from '../components/ui/ChatBottom';
 import { MESSAGE_SUBSCRIPTION } from '../graphql/subscriptions/conversation.subscription';
-import { SEND_MESSAGE } from '../graphql/mutations/conversation.mutation';
+import { SEND_MESSAGE, SEND_AUDIO_CHUNK } from '../graphql/mutations/conversation.mutation';
 
 const Template = () => {
     const { templateSlug } = useParams();
@@ -17,6 +17,9 @@ const Template = () => {
     const isStreamingRef = useRef(false);
     const streamedMessageRef = useRef('');
     const chatContainerRef = useRef(null);
+    const [isAudioType, setIsAudioType] = useState(true);
+    const [isRecording, setIsRecording] = useState(false);
+    const mediaRecorderRef = useRef(null);
 
     const { data, loading } = useQuery(GET_TEMPLATE_BY_SLUG, {
         variables: {
@@ -31,6 +34,7 @@ const Template = () => {
     });
 
     const [sendMessage] = useMutation(SEND_MESSAGE);
+    const [sendAudioChunk] = useMutation(SEND_AUDIO_CHUNK);
 
     const scrollToBottom = () => {
         if (chatContainerRef.current) {
@@ -94,8 +98,50 @@ const Template = () => {
         setCurrentStreamedMessage('');
         streamedMessageRef.current = '';
         isStreamingRef.current = false;
-        setIsTyping(true);  // Set typing to true when a new message is sent
+        setIsTyping(true);
     }, [currentStreamedMessage, sendMessageToServer]);
+
+    const handleStartRecording = useCallback(async () => {
+        try {
+            await startRecording();
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mediaRecorderRef.current = new MediaRecorder(stream, {
+                mimeType: 'audio/webm',
+            });
+
+            mediaRecorderRef.current.ondataavailable = async (event) => {
+                if (event.data.size > 0) {
+                    const reader = new FileReader();
+                    reader.onload = async () => {
+                        const base64AudioData = reader.result.split(',')[1];
+                        await sendAudioData({ variables: { data: base64AudioData } });
+                    };
+                    reader.readAsDataURL(event.data);
+                }
+            };
+
+            mediaRecorderRef.current.start(250);
+        } catch (error) {
+            console.error('Error starting recording:', error);
+        }
+    }, [startRecording, sendAudioData]);
+
+    const handleStopRecording = useCallback(async () => {
+        if (mediaRecorderRef.current) {
+            mediaRecorderRef.current.stop();
+            await stopRecording(
+                { 
+                    variables: {
+                        templateId: data?.templateBySlug?.id,
+                        messages: messages
+                    }
+                }
+            );
+            setIsTyping(true);
+            userMessageRef.current = '';
+            setCurrentUserMessage('');
+        }
+    }, [stopRecording, data?.templateBySlug?.id, messages]);
 
     if (loading || typeLoading) return <div className="flex items-center justify-center h-screen">Loading...</div>;
 
@@ -114,7 +160,13 @@ const Template = () => {
                         <ChatMessage message={{ role: 'system', content: 'Thining...' }} isTyping={true} />
                     )}
                 </div>
-                <ChatBottom onSendMessage={handleSendMessage} />
+                <ChatBottom 
+                    isAudioType={isAudioType}
+                    onSendMessage={handleSendMessage}
+                    onStartRecording={handleStartRecording}
+                    onStopRecording={handleStopRecording}
+                    isRecording={isRecording}
+                />
             </div>
         </>
     );
