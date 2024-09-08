@@ -12,7 +12,7 @@ import { SEND_MESSAGE, START_RECORDING, STOP_RECORDING, SEND_AUDIO_DATA } from '
 const Template = () => {
     const { templateSlug } = useParams();
     const [messages, setMessages] = useState([]);
-    const [currentStreamedMessage, setCurrentStreamedMessage] = useState({});
+    const [currentStreamedMessage, setCurrentStreamedMessage] = useState('');
     const [isTyping, setIsTyping] = useState(false);
     const isStreamingRef = useRef(false);
     const streamedMessageRef = useRef('');
@@ -51,7 +51,6 @@ const Template = () => {
     const { data: subscriptionData } = useSubscription(MESSAGE_SUBSCRIPTION, {
         variables: { templateId: data?.templateBySlug?.id },
         onSubscriptionData: ({ subscriptionData }) => {
-            console.log(subscriptionData);
             const newContent = subscriptionData?.data?.messageStreamed;
             if (newContent !== undefined) {
                 if (streamedMessageRef.current === '') {
@@ -61,7 +60,7 @@ const Template = () => {
                 setCurrentStreamedMessage(streamedMessageRef.current);
                 isStreamingRef.current = true;
             } else if (isStreamingRef.current) {
-                setMessages(prev => [...prev, { role: 'system', content: streamedMessageRef.current }]);
+                if(!isEmpty(streamedMessageRef)) setMessages(prev => [...prev, { role: 'system', content: streamedMessageRef.current }]);
                 setCurrentStreamedMessage('');
                 streamedMessageRef.current = '';
                 isStreamingRef.current = false;
@@ -70,9 +69,8 @@ const Template = () => {
     });
 
     useEffect(() => {
-        console.log(currentStreamedMessage);
         if (!isStreamingRef.current && currentStreamedMessage) {
-            setMessages(prev => [...prev, { role: 'system', content: currentStreamedMessage }]);
+            if(!isEmpty(currentStreamedMessage)) setMessages(prev => [...prev, { role: 'system', content: currentStreamedMessage }]);
             setCurrentStreamedMessage('');
         }
     }, [currentStreamedMessage]);
@@ -149,7 +147,10 @@ const Template = () => {
             setIsTyping(true);
         }
     }, [stopRecording, data?.templateBySlug?.id, messages]);
-    // console.log(currentStreamedMessage);
+
+    const isEmpty = (obj) => Object.keys(obj).length === 0;
+
+    console.log(currentStreamedMessage);
 
     if (loading || typeLoading) return <div className="flex items-center justify-center h-screen">Loading...</div>;
 
@@ -158,11 +159,11 @@ const Template = () => {
             <Header name={data?.templateBySlug?.aiRole} icon={data?.templateBySlug?.icon} />
             <div className="flex flex-col h-screen relative max-w-940 mx-auto items-center overflow-hidden">
                 <div ref={chatContainerRef} className="flex-grow w-full p-4 overflow-y-auto scrollbar-hide mb-40">
-                    {messages.map((message, index) => (
+                    {messages && messages.map((message, index) => (
                         <ChatMessage key={`${message.role}-${index}`} message={message} />
                     ))}
-                    {currentStreamedMessage && currentStreamedMessage.content && (
-                        <ChatMessage message={{ role: currentStreamedMessage.role, content: currentStreamedMessage.content }} isStreaming={true} />
+                    {currentStreamedMessage &&  (
+                        <ChatMessage message={{ role: currentStreamedMessage.role, content: currentStreamedMessage }} isStreaming={true} />
                     )}
                     {isTyping && !currentStreamedMessage && (
                         <ChatMessage message={{ role: 'system', content: 'Thining...' }} isTyping={true} />
