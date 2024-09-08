@@ -6,11 +6,13 @@ const conversationTypeDef = `#graphql
 
     type Mutation {
         sendMessage(templateId: ID!, messages: [InputMessage!]!): Boolean
-        sendAudioChunk(templateId: ID!, audioChunk: String!): Boolean
+        startRecording: Boolean
+        stopRecording(templateId: ID!, messages: [InputMessage!]!): Boolean
+        sendAudioData(data: String!): Boolean
     }
 
     type Subscription {
-        messageStreamed(templateId: ID!): String
+        messageStreamed(templateId: ID!): String!
     }
 `;
 

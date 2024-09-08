@@ -6,8 +6,20 @@ export const SEND_MESSAGE = gql`
     }
 `;
 
-export const SEND_AUDIO_CHUNK = gql`
-    mutation SendAudioChunk($templateId: ID!, $audioChunk: String!) {
-        sendAudioChunk(templateId: $templateId, audioChunk: $audioChunk)
+export const START_RECORDING = gql`
+    mutation StartRecording {
+        startRecording
+    }
+`;
+
+export const STOP_RECORDING = gql`
+    mutation StopRecording($templateId: ID!, $messages: [InputMessage!]!) {
+        stopRecording(templateId: $templateId, messages: $messages)
+    }
+`;
+
+export const SEND_AUDIO_DATA = gql`
+    mutation SendAudioData($data: String!) {
+        sendAudioData(data: $data)
     }
 `;

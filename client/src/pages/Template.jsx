@@ -7,12 +7,12 @@ import { GET_ENABLE_TYPES } from '../graphql/queries/types.query';
 import ChatMessage from '../components/ui/ChatMessage';
 import ChatBottom from '../components/ui/ChatBottom';
 import { MESSAGE_SUBSCRIPTION } from '../graphql/subscriptions/conversation.subscription';
-import { SEND_MESSAGE, SEND_AUDIO_CHUNK } from '../graphql/mutations/conversation.mutation';
+import { SEND_MESSAGE, START_RECORDING, STOP_RECORDING, SEND_AUDIO_DATA } from '../graphql/mutations/conversation.mutation';
 
 const Template = () => {
     const { templateSlug } = useParams();
     const [messages, setMessages] = useState([]);
-    const [currentStreamedMessage, setCurrentStreamedMessage] = useState('');
+    const [currentStreamedMessage, setCurrentStreamedMessage] = useState({});
     const [isTyping, setIsTyping] = useState(false);
     const isStreamingRef = useRef(false);
     const streamedMessageRef = useRef('');
@@ -34,7 +34,9 @@ const Template = () => {
     });
 
     const [sendMessage] = useMutation(SEND_MESSAGE);
-    const [sendAudioChunk] = useMutation(SEND_AUDIO_CHUNK);
+    const [startRecording] = useMutation(START_RECORDING);
+    const [stopRecording] = useMutation(STOP_RECORDING);
+    const [sendAudioData] = useMutation(SEND_AUDIO_DATA);
 
     const scrollToBottom = () => {
         if (chatContainerRef.current) {
@@ -49,6 +51,7 @@ const Template = () => {
     const { data: subscriptionData } = useSubscription(MESSAGE_SUBSCRIPTION, {
         variables: { templateId: data?.templateBySlug?.id },
         onSubscriptionData: ({ subscriptionData }) => {
+            console.log(subscriptionData);
             const newContent = subscriptionData?.data?.messageStreamed;
             if (newContent !== undefined) {
                 if (streamedMessageRef.current === '') {
@@ -67,6 +70,7 @@ const Template = () => {
     });
 
     useEffect(() => {
+        console.log(currentStreamedMessage);
         if (!isStreamingRef.current && currentStreamedMessage) {
             setMessages(prev => [...prev, { role: 'system', content: currentStreamedMessage }]);
             setCurrentStreamedMessage('');
@@ -104,6 +108,10 @@ const Template = () => {
     const handleStartRecording = useCallback(async () => {
         try {
             await startRecording();
+            setIsRecording(true);
+            setCurrentStreamedMessage('');
+            streamedMessageRef.current = '';
+            isStreamingRef.current = false;
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             mediaRecorderRef.current = new MediaRecorder(stream, {
                 mimeType: 'audio/webm',
@@ -127,6 +135,7 @@ const Template = () => {
     }, [startRecording, sendAudioData]);
 
     const handleStopRecording = useCallback(async () => {
+        setIsRecording(false);
         if (mediaRecorderRef.current) {
             mediaRecorderRef.current.stop();
             await stopRecording(
@@ -138,10 +147,9 @@ const Template = () => {
                 }
             );
             setIsTyping(true);
-            userMessageRef.current = '';
-            setCurrentUserMessage('');
         }
     }, [stopRecording, data?.templateBySlug?.id, messages]);
+    // console.log(currentStreamedMessage);
 
     if (loading || typeLoading) return <div className="flex items-center justify-center h-screen">Loading...</div>;
 
@@ -153,8 +161,8 @@ const Template = () => {
                     {messages.map((message, index) => (
                         <ChatMessage key={`${message.role}-${index}`} message={message} />
                     ))}
-                    {currentStreamedMessage && (
-                        <ChatMessage message={{ role: 'system', content: currentStreamedMessage }} isStreaming={true} />
+                    {currentStreamedMessage && currentStreamedMessage.content && (
+                        <ChatMessage message={{ role: currentStreamedMessage.role, content: currentStreamedMessage.content }} isStreaming={true} />
                     )}
                     {isTyping && !currentStreamedMessage && (
                         <ChatMessage message={{ role: 'system', content: 'Thining...' }} isTyping={true} />
