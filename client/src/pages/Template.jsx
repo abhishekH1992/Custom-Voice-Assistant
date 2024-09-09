@@ -12,7 +12,7 @@ import { SEND_MESSAGE, START_RECORDING, STOP_RECORDING, SEND_AUDIO_DATA } from '
 const Template = () => {
     const { templateSlug } = useParams();
     const [messages, setMessages] = useState([]);
-    const [currentStreamedMessage, setCurrentStreamedMessage] = useState('');
+    const [currentStreamedMessage, setCurrentStreamedMessage] = useState({});
     const [isTyping, setIsTyping] = useState(false);
     const isStreamingRef = useRef(false);
     const streamedMessageRef = useRef('');
@@ -51,13 +51,17 @@ const Template = () => {
     const { data: subscriptionData } = useSubscription(MESSAGE_SUBSCRIPTION, {
         variables: { templateId: data?.templateBySlug?.id },
         onSubscriptionData: ({ subscriptionData }) => {
-            const newContent = subscriptionData?.data?.messageStreamed;
+            const { role, content: newContent } = subscriptionData?.data?.messageStreamed;
+            console.log(subscriptionData);
             if (newContent !== undefined) {
                 if (streamedMessageRef.current === '') {
                     setIsTyping(false);
                 }
                 streamedMessageRef.current += newContent;
-                setCurrentStreamedMessage(streamedMessageRef.current);
+                setCurrentStreamedMessage({
+                    role,
+                    content: streamedMessageRef.current
+                });
                 isStreamingRef.current = true;
             } else if (isStreamingRef.current) {
                 if(!isEmpty(streamedMessageRef)) setMessages(prev => [...prev, { role: 'system', content: streamedMessageRef.current }]);
@@ -70,7 +74,7 @@ const Template = () => {
 
     useEffect(() => {
         if (!isStreamingRef.current && currentStreamedMessage) {
-            if(!isEmpty(currentStreamedMessage)) setMessages(prev => [...prev, { role: 'system', content: currentStreamedMessage }]);
+            if(!isEmpty(currentStreamedMessage)) setMessages(prev => [...prev, { role: 'system', content: currentStreamedMessage.content }]);
             setCurrentStreamedMessage('');
         }
     }, [currentStreamedMessage]);
@@ -91,13 +95,13 @@ const Template = () => {
     const handleSendMessage = useCallback((message) => {
         setMessages(prevMessages => {
             const newMessages = currentStreamedMessage
-                ? [...prevMessages, { role: 'system', content: currentStreamedMessage }, { role: 'user', content: message }]
+                ? [...prevMessages, { role: 'system', content: currentStreamedMessage.content }, { role: 'user', content: message }]
                 : [...prevMessages, { role: 'user', content: message }];
             sendMessageToServer(newMessages);
             return newMessages;
         });
 
-        setCurrentStreamedMessage('');
+        setCurrentStreamedMessage({});
         streamedMessageRef.current = '';
         isStreamingRef.current = false;
         setIsTyping(true);
@@ -105,9 +109,12 @@ const Template = () => {
 
     const handleStartRecording = useCallback(async () => {
         try {
+            if(currentStreamedMessage) {
+                setMessages(prevMessages => [...prevMessages, { role: currentStreamedMessage.role, content: currentStreamedMessage.content }]);
+            }
             await startRecording();
             setIsRecording(true);
-            setCurrentStreamedMessage('');
+            setCurrentStreamedMessage({});
             streamedMessageRef.current = '';
             isStreamingRef.current = false;
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -130,7 +137,7 @@ const Template = () => {
         } catch (error) {
             console.error('Error starting recording:', error);
         }
-    }, [startRecording, sendAudioData]);
+    }, [currentStreamedMessage, startRecording, sendAudioData]);
 
     const handleStopRecording = useCallback(async () => {
         setIsRecording(false);
@@ -150,8 +157,6 @@ const Template = () => {
 
     const isEmpty = (obj) => Object.keys(obj).length === 0;
 
-    console.log(currentStreamedMessage);
-
     if (loading || typeLoading) return <div className="flex items-center justify-center h-screen">Loading...</div>;
 
     return (
@@ -163,10 +168,10 @@ const Template = () => {
                         <ChatMessage key={`${message.role}-${index}`} message={message} />
                     ))}
                     {currentStreamedMessage &&  (
-                        <ChatMessage message={{ role: currentStreamedMessage.role, content: currentStreamedMessage }} isStreaming={true} />
+                        <ChatMessage message={{ role: currentStreamedMessage.role, content: currentStreamedMessage.content }} />
                     )}
-                    {isTyping && !currentStreamedMessage && (
-                        <ChatMessage message={{ role: 'system', content: 'Thining...' }} isTyping={true} />
+                    {(isTyping || isRecording) && !currentStreamedMessage && (
+                        <ChatMessage message={{ role: isRecording ? 'user' : 'system', content: isRecording ? 'Listening...' : 'Thinking...' }} />
                     )}
                 </div>
                 <ChatBottom 

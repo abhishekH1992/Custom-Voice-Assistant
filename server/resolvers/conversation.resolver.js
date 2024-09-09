@@ -22,9 +22,10 @@ const conversationResolver = {
                     ],
                     true
                 );
+
                 for await (const part of stream) {
                     pubsub.publish('MESSAGE_STREAMED', { 
-                        messageStreamed: part.choices[0]?.delta?.content || '',
+                        messageStreamed: { role: 'system', content: part.choices[0]?.delta?.content || '' },
                         templateId
                     });
                 }
@@ -54,11 +55,32 @@ const conversationResolver = {
                     const transcriptionPart = part || '';
                     fullTranscription += transcriptionPart;
                     pubsub.publish('MESSAGE_STREAMED', { 
-                        messageStreamed: part,
+                        messageStreamed: { role: 'user', content: part },
                         templateId
                     });
                 }
                 fs.unlinkSync(filePath);
+
+                const template = await Template.findByPk(templateId);
+                const stream = await textCompletion(
+                    template.model,
+                    [
+                        { 'role': 'system', content: template.prompt },
+                        ...messages,
+                        { 'role': 'user', content: fullTranscription }
+                    ],
+                    false
+                );
+
+                const audioStream = await textToSpeech(fullTranscription, template.voice);
+                for await (const part of transcriptionStream) {
+                    const transcriptionPart = part || '';
+                    fullTranscription += transcriptionPart;
+                    pubsub.publish('MESSAGE_STREAMED', { 
+                        messageStreamed: { role: 'user', content: part },
+                        templateId
+                    });
+                }
         
                 return true;
             } catch (error) {
@@ -76,6 +98,7 @@ const conversationResolver = {
         messageStreamed: {
             subscribe: (_, { templateId }) => pubsub.asyncIterator(['MESSAGE_STREAMED']),
             resolve: (payload, variables) => {
+                console.log(payload);
                 if (payload.templateId === variables.templateId) {
                     return payload.messageStreamed;
                 }
