@@ -8,32 +8,48 @@ const os = require('os');
 const pubsub = new PubSub();
 let audioChunks = [];
 
-async function* combinedStream(textStream, audioPromise, templateId) {
-    const audioStream = await audioPromise;
-    const audioIterator = audioStream[Symbol.asyncIterator]();
-    let audioChunk = await audioIterator.next();
+const CHUNK_SIZE = 16384; // 16KB
 
-    for await (const part of textStream) {
+async function* combinedStream(textStream, templateId) {
+    let fullResponse = '';
+    let audioBuffer = Buffer.alloc(0);
+    let isLastChunk = false;
+
+    for await (const part of textStream) { //this stream should start along when it start the audio stream
         const content = part.choices[0]?.delta?.content || '';
+        fullResponse += content;
+
         yield {
             messageStreamed: { role: 'system', content },
             templateId,
         };
+    }
 
-        if (!audioChunk.done) {
+    // Generate audio from the full response
+    const audioStream = await textToSpeech(fullResponse, templateId.voice);
+    const audioIterator = audioStream[Symbol.asyncIterator]();
+
+    while (!isLastChunk) {
+        const { value, done } = await audioIterator.next();
+        isLastChunk = done;
+
+        if (value) {
+            audioBuffer = Buffer.concat([audioBuffer, value]);
+        }
+
+        while (audioBuffer.length >= CHUNK_SIZE || (isLastChunk && audioBuffer.length > 0)) {
+            const chunkToSend = audioBuffer.slice(0, CHUNK_SIZE);
+            audioBuffer = audioBuffer.slice(CHUNK_SIZE);
+
             yield {
-                audioStreamed: { content: audioChunk.value.toString('base64') },
+                audioStreamed: { content: chunkToSend.toString('base64') },
                 templateId
             };
-            audioChunk = await audioIterator.next();
+
+            if (isLastChunk && audioBuffer.length === 0) {
+                break;
+            }
         }
-    }
-    while (!audioChunk.done) {
-        yield {
-            audioStreamed: { content: audioChunk.value.toString('base64') },
-            templateId
-        };
-        audioChunk = await audioIterator.next();
     }
 }
 
@@ -73,7 +89,7 @@ const conversationResolver = {
         stopRecording: async (_, { templateId, messages }) => {
             const audioBuffer = Buffer.concat(audioChunks);
             const fileName = `audio_${Date.now()}.wav`;
-            const filePath = path.join(os.tmpdir(), fileName);
+            const filePath = path.join(__dirname, '..', 'temp', fileName);
             
             fs.writeFileSync(filePath, audioBuffer);
         
@@ -102,9 +118,7 @@ const conversationResolver = {
                     true
                 );
 
-                const audioStream = await textToSpeech(fullTranscription, template.voice);
-
-                const combinedStreamInstance = (stream, audioStream, templateId);
+                const combinedStreamInstance = combinedStream(stream, templateId);
 
                 for await (const part of combinedStreamInstance) {
                     if (part.messageStreamed) {
@@ -115,7 +129,7 @@ const conversationResolver = {
                     } 
                     else if (part.audioStreamed) {
                         pubsub.publish('AUDIO_STREAMED', {
-                            audioStreamed: { role: 'system', content: part.audioStreamed },
+                            audioStreamed: part.audioStreamed,
                             templateId
                         });
                     }

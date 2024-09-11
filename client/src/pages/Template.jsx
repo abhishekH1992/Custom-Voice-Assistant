@@ -101,11 +101,11 @@ const Template = () => {
         }
     }, [userStreamedContent]);
 
-    const { data: audioData, loading: userLoading, error: userError } = useSubscription(AUDIO_SUBSCRIPTION, {
+    const { data: audioData, loading: audioLoading, error: audioError } = useSubscription(AUDIO_SUBSCRIPTION, {
         variables: { templateId: data?.templateBySlug?.id },
         onSubscriptionData: ({ subscriptionData }) => {
+            console.log(subscriptionData);
             const { content } = subscriptionData?.data?.audioStreamed;
-            console.log(content);
             if(content) {
                 audioQueue.current.push(content);
                 if (!isPlayingAudio.current) {
@@ -116,23 +116,44 @@ const Template = () => {
     });
 
     useEffect(() => {
-        if (userError) {
-            console.error("USER_SUBSCRIPTION error:", userError);
+        console.log(audioData);
+        if (audioError) {
+            console.error("AUDIO_SUBSCRIPTION error:", audioError);
         }
-    }, [userError]);
+    }, [audioData, audioError]);
 
     const playNextAudio = useCallback(() => {
         if (audioQueue.current.length > 0) {
             isPlayingAudio.current = true;
-            const audioChunk = base64ToArrayBuffer(audioQueue.current.shift());
-            const blob = new Blob([audioChunk], { type: 'audio/mpeg' });
-            const url = URL.createObjectURL(blob);
-            audioRef.current.src = url;
-            audioRef.current.play()
-                .then(() => {
-                    audioRef.current.onended = playNextAudio;
-                })
-                .catch(e => console.error("Error playing audio:", e));
+            const audioContent = audioQueue.current.shift();
+            const audioChunk = base64ToArrayBuffer(audioContent);
+            const audioFormats = ['audio/mpeg', 'audio/mp4', 'audio/webm', 'audio/ogg'];
+            let playAttempts = 0;
+
+            const attemptPlay = (formatIndex) => {
+                if (formatIndex >= audioFormats.length) {
+                    console.error("Failed to play audio with all known formats");
+                    playNextAudio();
+                    return;
+                }
+
+                const blob = new Blob([audioChunk], { type: audioFormats[formatIndex] });
+                const url = URL.createObjectURL(blob);
+                
+                audioRef.current.src = url;
+                audioRef.current.play()
+                    .then(() => {
+                        console.log("Audio playing successfully with format:", audioFormats[formatIndex]);
+                        audioRef.current.onended = playNextAudio;
+                    })
+                    .catch(e => {
+                        console.warn(`Error playing audio with format ${audioFormats[formatIndex]}:`, e);
+                        URL.revokeObjectURL(url);
+                        attemptPlay(formatIndex + 1);
+                    });
+            };
+
+            attemptPlay(0);
         } else {
             isPlayingAudio.current = false;
         }
