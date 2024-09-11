@@ -1,65 +1,12 @@
 const { Template } = require('../models');
 const { PubSub } = require('graphql-subscriptions');
-const { textCompletion, transcribeAudio, textToSpeech } = require('../utils/conversation.util');
+const { textCompletion, transcribeAudio, combinedStream } = require('../utils/conversation.util');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
 const pubsub = new PubSub();
 let audioChunks = [];
-
-const CHUNK_SIZE = 16384;
-
-async function* combinedStream(textStream, templateId) {
-    let fullResponse = '';
-    let audioBuffer = Buffer.alloc(0);
-    let isLastChunk = false;
-    let pendingTextStream = [];
-
-    for await (const part of textStream) {
-        const content = part.choices[0]?.delta?.content || '';
-        fullResponse += content;
-        pendingTextStream.push(content);
-    }
-
-    const audioStream = await textToSpeech(fullResponse, templateId.voice);
-    const audioIterator = audioStream[Symbol.asyncIterator]();
-    let isTextStreamed = false;
-
-    while (!isLastChunk) {
-        const { value, done } = await audioIterator.next();
-        isLastChunk = done;
-
-        if (value) {
-            audioBuffer = Buffer.concat([audioBuffer, value]);
-        }
-
-
-        if(audioBuffer.length >= CHUNK_SIZE && !isTextStreamed) {
-            isTextStreamed = true;
-            for (const textChunk of pendingTextStream) {
-                yield {
-                    messageStreamed: { role: 'system', content: textChunk },
-                    templateId,
-                };
-            }
-        }
-
-        while (audioBuffer.length >= CHUNK_SIZE || (isLastChunk && audioBuffer.length > 0)) {
-            const chunkToSend = audioBuffer.slice(0, CHUNK_SIZE);
-            audioBuffer = audioBuffer.slice(CHUNK_SIZE);
-
-            yield {
-                audioStreamed: { content: chunkToSend.toString('base64') },
-                templateId
-            };
-
-            if (isLastChunk && audioBuffer.length === 0) {
-                break;
-            }
-        }
-    }
-}
 
 const conversationResolver = {
     Mutation: {

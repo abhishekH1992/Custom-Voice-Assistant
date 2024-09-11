@@ -1,4 +1,4 @@
-const openai = require('./openai.util');
+const { openai, audioStreamChunkSize } = require('./openai.util');
 const fs = require('fs');
 
 const textCompletion = async(model, messages, stream = false) => {
@@ -35,4 +35,56 @@ const textToSpeech = async function*(text, voice='alloy') {
     yield* response.body;
 };
 
-module.exports = { textCompletion, transcribeAudio, textToSpeech };
+
+const combinedStream = async function*(textStream, templateId) {
+    let fullResponse = '';
+    let audioBuffer = Buffer.alloc(0);
+    let isLastChunk = false;
+    let pendingTextStream = [];
+
+    for await (const part of textStream) {
+        const content = part.choices[0]?.delta?.content || '';
+        fullResponse += content;
+        pendingTextStream.push(content);
+    }
+
+    const audioStream = await textToSpeech(fullResponse, templateId.voice);
+    const audioIterator = audioStream[Symbol.asyncIterator]();
+    let isTextStreamed = false;
+
+    while (!isLastChunk) {
+        const { value, done } = await audioIterator.next();
+        isLastChunk = done;
+
+        if (value) {
+            audioBuffer = Buffer.concat([audioBuffer, value]);
+        }
+
+
+        if(audioBuffer.length >= audioStreamChunkSize && !isTextStreamed) {
+            isTextStreamed = true;
+            for (const textChunk of pendingTextStream) {
+                yield {
+                    messageStreamed: { role: 'system', content: textChunk },
+                    templateId,
+                };
+            }
+        }
+
+        while (audioBuffer.length >= audioStreamChunkSize || (isLastChunk && audioBuffer.length > 0)) {
+            const chunkToSend = audioBuffer.slice(0, audioStreamChunkSize);
+            audioBuffer = audioBuffer.slice(audioStreamChunkSize);
+
+            yield {
+                audioStreamed: { content: chunkToSend.toString('base64') },
+                templateId
+            };
+
+            if (isLastChunk && audioBuffer.length === 0) {
+                break;
+            }
+        }
+    }
+}
+
+module.exports = { textCompletion, transcribeAudio, textToSpeech, combinedStream };
