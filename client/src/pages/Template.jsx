@@ -52,10 +52,9 @@ const Template = () => {
         scrollToBottom();
     }, [messages, currentStreamedMessage]);
 
-    useSubscription(MESSAGE_SUBSCRIPTION, {
+    const { data: audioData, loading: audioLoading, error: audioError } =  useSubscription(MESSAGE_SUBSCRIPTION, {
         variables: { templateId: data?.templateBySlug?.id },
         onSubscriptionData: ({ subscriptionData }) => {
-            console.log(subscriptionData);
             const { role, content: newContent } = subscriptionData?.data?.messageStreamed;
             if (newContent !== undefined) {
                 if (streamedMessageRef.current === '') {
@@ -101,10 +100,9 @@ const Template = () => {
         }
     }, [userStreamedContent]);
 
-    const { data: audioData, loading: audioLoading, error: audioError } = useSubscription(AUDIO_SUBSCRIPTION, {
+    useSubscription(AUDIO_SUBSCRIPTION, {
         variables: { templateId: data?.templateBySlug?.id },
         onSubscriptionData: ({ subscriptionData }) => {
-            console.log(subscriptionData);
             const { content } = subscriptionData?.data?.audioStreamed;
             if(content) {
                 audioQueue.current.push(content);
@@ -116,7 +114,6 @@ const Template = () => {
     });
 
     useEffect(() => {
-        console.log(audioData);
         if (audioError) {
             console.error("AUDIO_SUBSCRIPTION error:", audioError);
         }
@@ -128,7 +125,6 @@ const Template = () => {
             const audioContent = audioQueue.current.shift();
             const audioChunk = base64ToArrayBuffer(audioContent);
             const audioFormats = ['audio/mpeg', 'audio/mp4', 'audio/webm', 'audio/ogg'];
-            let playAttempts = 0;
 
             const attemptPlay = (formatIndex) => {
                 if (formatIndex >= audioFormats.length) {

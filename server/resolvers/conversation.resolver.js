@@ -8,26 +8,23 @@ const os = require('os');
 const pubsub = new PubSub();
 let audioChunks = [];
 
-const CHUNK_SIZE = 16384; // 16KB
+const CHUNK_SIZE = 16384;
 
 async function* combinedStream(textStream, templateId) {
     let fullResponse = '';
     let audioBuffer = Buffer.alloc(0);
     let isLastChunk = false;
+    let pendingTextStream = [];
 
-    for await (const part of textStream) { //this stream should start along when it start the audio stream
+    for await (const part of textStream) {
         const content = part.choices[0]?.delta?.content || '';
         fullResponse += content;
-
-        yield {
-            messageStreamed: { role: 'system', content },
-            templateId,
-        };
+        pendingTextStream.push(content);
     }
 
-    // Generate audio from the full response
     const audioStream = await textToSpeech(fullResponse, templateId.voice);
     const audioIterator = audioStream[Symbol.asyncIterator]();
+    let isTextStreamed = false;
 
     while (!isLastChunk) {
         const { value, done } = await audioIterator.next();
@@ -35,6 +32,17 @@ async function* combinedStream(textStream, templateId) {
 
         if (value) {
             audioBuffer = Buffer.concat([audioBuffer, value]);
+        }
+
+
+        if(audioBuffer.length >= CHUNK_SIZE && !isTextStreamed) {
+            isTextStreamed = true;
+            for (const textChunk of pendingTextStream) {
+                yield {
+                    messageStreamed: { role: 'system', content: textChunk },
+                    templateId,
+                };
+            }
         }
 
         while (audioBuffer.length >= CHUNK_SIZE || (isLastChunk && audioBuffer.length > 0)) {
@@ -119,7 +127,6 @@ const conversationResolver = {
                 );
 
                 const combinedStreamInstance = combinedStream(stream, templateId);
-
                 for await (const part of combinedStreamInstance) {
                     if (part.messageStreamed) {
                         pubsub.publish('MESSAGE_STREAMED', {
