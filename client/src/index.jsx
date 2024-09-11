@@ -24,28 +24,28 @@ const root = ReactDOM.createRoot(
 
 const httpLink = new HttpLink({
     uri: 'http://localhost:5000/graphql'
-  });
+});
   
-  const wsLink = new GraphQLWsLink(createClient({
+const wsLink = new GraphQLWsLink(createClient({
     url: 'ws://localhost:5000/graphql',
-  }));
+}));
   
-  const splitLink = split(
+const splitLink = split(
     ({ query }) => {
-      const definition = getMainDefinition(query);
-      return (
-        definition.kind === 'OperationDefinition' &&
-        definition.operation === 'subscription'
-      );
+        const definition = getMainDefinition(query);
+        return (
+            definition.kind === 'OperationDefinition' &&
+            definition.operation === 'subscription'
+        );
     },
     wsLink,
     httpLink,
-  );
+);
   
-  const client = new ApolloClient({
+const client = new ApolloClient({
     link: splitLink,
     cache: new InMemoryCache()
-  });
+});
 
 root.render(
     <React.StrictMode>
