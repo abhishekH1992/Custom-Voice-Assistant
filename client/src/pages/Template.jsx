@@ -6,7 +6,7 @@ import { GET_TEMPLATE_BY_SLUG } from '../graphql/queries/templates.query';
 import { GET_ENABLE_TYPES } from '../graphql/queries/types.query';
 import ChatMessage from '../components/ui/ChatMessage';
 import ChatBottom from '../components/ui/ChatBottom';
-import { MESSAGE_SUBSCRIPTION } from '../graphql/subscriptions/conversation.subscription';
+import { MESSAGE_SUBSCRIPTION, AUDIO_SUBSCRIPTION, USER_SUBSCRIPTION } from '../graphql/subscriptions/conversation.subscription';
 import { SEND_MESSAGE, START_RECORDING, STOP_RECORDING, SEND_AUDIO_DATA } from '../graphql/mutations/conversation.mutation';
 
 const Template = () => {
@@ -20,6 +20,10 @@ const Template = () => {
     const [isAudioType, setIsAudioType] = useState(true);
     const [isRecording, setIsRecording] = useState(false);
     const mediaRecorderRef = useRef(null);
+    const audioRef = useRef(new Audio());
+    const audioQueue = useRef([]);
+    const isPlayingAudio = useRef(false);
+    const [userStreamedContent, setUserStreamedContent] = useState('');
 
     const { data, loading } = useQuery(GET_TEMPLATE_BY_SLUG, {
         variables: {
@@ -48,11 +52,11 @@ const Template = () => {
         scrollToBottom();
     }, [messages, currentStreamedMessage]);
 
-    const { data: subscriptionData } = useSubscription(MESSAGE_SUBSCRIPTION, {
+    useSubscription(MESSAGE_SUBSCRIPTION, {
         variables: { templateId: data?.templateBySlug?.id },
         onSubscriptionData: ({ subscriptionData }) => {
-            const { role, content: newContent } = subscriptionData?.data?.messageStreamed;
             console.log(subscriptionData);
+            const { role, content: newContent } = subscriptionData?.data?.messageStreamed;
             if (newContent !== undefined) {
                 if (streamedMessageRef.current === '') {
                     setIsTyping(false);
@@ -73,11 +77,76 @@ const Template = () => {
     });
 
     useEffect(() => {
-        if (!isStreamingRef.current && currentStreamedMessage) {
-            if(!isEmpty(currentStreamedMessage)) setMessages(prev => [...prev, { role: 'system', content: currentStreamedMessage.content }]);
+        if (!isStreamingRef.current && !isEmpty(currentStreamedMessage)) {
+            setMessages(prev => [...prev, { role: 'system', content: currentStreamedMessage.content }]);
             setCurrentStreamedMessage('');
+            streamedMessageRef.current = '';
         }
     }, [currentStreamedMessage]);
+
+    useSubscription(USER_SUBSCRIPTION, {
+        variables: { templateId: data?.templateBySlug?.id },
+        onSubscriptionData: ({ subscriptionData }) => {
+            const { content } = subscriptionData?.data?.userStreamed || {};
+            if (content) {
+                setUserStreamedContent(prevContent => prevContent + content);
+            }
+        }
+    });
+
+    useEffect(() => {
+        if (!isEmpty(userStreamedContent)) {
+            setMessages(prevMessages => [...prevMessages, { role: 'user', content: userStreamedContent }]);
+            setUserStreamedContent('');
+        }
+    }, [userStreamedContent]);
+
+    const { data: audioData, loading: userLoading, error: userError } = useSubscription(AUDIO_SUBSCRIPTION, {
+        variables: { templateId: data?.templateBySlug?.id },
+        onSubscriptionData: ({ subscriptionData }) => {
+            const { content } = subscriptionData?.data?.audioStreamed;
+            console.log(content);
+            if(content) {
+                audioQueue.current.push(content);
+                if (!isPlayingAudio.current) {
+                    playNextAudio();
+                }
+            }
+        }
+    });
+
+    useEffect(() => {
+        if (userError) {
+            console.error("USER_SUBSCRIPTION error:", userError);
+        }
+    }, [userError]);
+
+    const playNextAudio = useCallback(() => {
+        if (audioQueue.current.length > 0) {
+            isPlayingAudio.current = true;
+            const audioChunk = base64ToArrayBuffer(audioQueue.current.shift());
+            const blob = new Blob([audioChunk], { type: 'audio/mpeg' });
+            const url = URL.createObjectURL(blob);
+            audioRef.current.src = url;
+            audioRef.current.play()
+                .then(() => {
+                    audioRef.current.onended = playNextAudio;
+                })
+                .catch(e => console.error("Error playing audio:", e));
+        } else {
+            isPlayingAudio.current = false;
+        }
+    }, []);
+
+    const base64ToArrayBuffer = (base64) => {
+        const binaryString = window.atob(base64);
+        const len = binaryString.length;
+        const bytes = new Uint8Array(len);
+        for (let i = 0; i < len; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+        }
+        return bytes.buffer;
+    };
 
     const sendMessageToServer = useCallback(async (messages) => {
         try {
@@ -94,7 +163,7 @@ const Template = () => {
 
     const handleSendMessage = useCallback((message) => {
         setMessages(prevMessages => {
-            const newMessages = currentStreamedMessage
+            const newMessages = !isEmpty(currentStreamedMessage)
                 ? [...prevMessages, { role: 'system', content: currentStreamedMessage.content }, { role: 'user', content: message }]
                 : [...prevMessages, { role: 'user', content: message }];
             sendMessageToServer(newMessages);
@@ -109,7 +178,7 @@ const Template = () => {
 
     const handleStartRecording = useCallback(async () => {
         try {
-            if(currentStreamedMessage) {
+            if(!isEmpty(currentStreamedMessage)) {
                 setMessages(prevMessages => [...prevMessages, { role: currentStreamedMessage.role, content: currentStreamedMessage.content }]);
             }
             await startRecording();
@@ -167,11 +236,17 @@ const Template = () => {
                     {messages && messages.map((message, index) => (
                         <ChatMessage key={`${message.role}-${index}`} message={message} />
                     ))}
-                    {currentStreamedMessage &&  (
+                    {!isEmpty(userStreamedContent) && (
+                        <ChatMessage message={{ role: 'user', content: userStreamedContent }} />
+                    )}
+                    {!isEmpty(currentStreamedMessage) &&  (
                         <ChatMessage message={{ role: currentStreamedMessage.role, content: currentStreamedMessage.content }} />
                     )}
-                    {(isTyping || isRecording) && !currentStreamedMessage && (
-                        <ChatMessage message={{ role: isRecording ? 'user' : 'system', content: isRecording ? 'Listening...' : 'Thinking...' }} />
+                    {isRecording && isEmpty(currentStreamedMessage) && (
+                        <ChatMessage message={{ role: 'user', content: 'Listening...' }} />
+                    )}
+                    {isTyping && !isRecording && isEmpty(currentStreamedMessage) && (
+                        <ChatMessage message={{ role: 'system', content: 'Thinking...' }} />
                     )}
                 </div>
                 <ChatBottom 

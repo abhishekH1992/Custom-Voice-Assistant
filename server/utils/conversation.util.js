@@ -28,7 +28,7 @@ const transcribeAudio = async(filePath) => {
 const textToSpeech = async function*(text, voice='alloy') {
     const response = await openai.audio.speech.create({
         model: "tts-1",
-        voice: alloy,
+        voice: voice,
         input: text,
     });
   
