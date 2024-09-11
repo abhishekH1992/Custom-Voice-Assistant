@@ -52,7 +52,7 @@ const Template = () => {
         scrollToBottom();
     }, [messages, currentStreamedMessage]);
 
-    const { data: audioData, loading: audioLoading, error: audioError } =  useSubscription(MESSAGE_SUBSCRIPTION, {
+    useSubscription(MESSAGE_SUBSCRIPTION, {
         variables: { templateId: data?.templateBySlug?.id },
         onSubscriptionData: ({ subscriptionData }) => {
             const { role, content: newContent } = subscriptionData?.data?.messageStreamed;
@@ -112,12 +112,6 @@ const Template = () => {
             }
         }
     });
-
-    useEffect(() => {
-        if (audioError) {
-            console.error("AUDIO_SUBSCRIPTION error:", audioError);
-        }
-    }, [audioData, audioError]);
 
     const playNextAudio = useCallback(() => {
         if (audioQueue.current.length > 0) {

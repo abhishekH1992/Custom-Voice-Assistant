@@ -42,7 +42,7 @@ const CallControlPanel = ({ onStartRecording, onStopRecording, isRecording }) =>
 const AudioWaveform = ({ isRecording }) => (
     <div style={{ overflow: 'visible', height: 0, width: 0 }}>
         <svg viewBox="0 0 192 32" width="192" height="32" className="absolute !inset-0 !size-full fill-current">
-            {[...Array(24)].map((_, index) => {
+            {[...Array(108)].map((_, index) => {
                 const x = 1.833333333333333 + index * 8;
                 const height = isRecording ? 2 + Math.random() * 28 : 2;
                 const y = 16 - height / 2;
