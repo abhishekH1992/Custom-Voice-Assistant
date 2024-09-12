@@ -20,6 +20,8 @@ module.exports = (sequelize, DataTypes) => {
         duration: DataTypes.INTEGER,
         isText: DataTypes.BOOLEAN,
         isActive: DataTypes.BOOLEAN,
+        isAutomatic: DataTypes.BOOLEAN,
+        isContinous: DataTypes.BOOLEAN,
         icon: DataTypes.STRING,
     }, {
         sequelize,
