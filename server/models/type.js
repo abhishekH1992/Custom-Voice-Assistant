@@ -21,6 +21,8 @@ module.exports = (sequelize, DataTypes) => {
         isText: DataTypes.BOOLEAN,
         isActive: DataTypes.BOOLEAN,
         icon: DataTypes.STRING,
+        isAutomatic: DataTypes.BOOLEAN,
+        isContinous: DataTypes.BOOLEAN,
     }, {
         sequelize,
         modelName: 'Type',

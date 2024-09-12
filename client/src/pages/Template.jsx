@@ -28,6 +28,9 @@ const Template = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedType, setSelectedType] = useState(null);
     const [recordingDuration, setRecordingDuration] = useState(null);
+    const [isAutomaticRecording, setIsAutomaticRecording] = useState(false);
+    const [isCallActive, setIsCallActive] = useState(true);
+    const automaticRecordingTimeoutRef = useRef(null);
 
     const { data, loading } = useQuery(GET_TEMPLATE_BY_SLUG, {
         variables: {
@@ -56,6 +59,7 @@ const Template = () => {
     const handleSelectType = (type) => {
         setSelectedType(type);
         setIsAudioType(type.isAudio);
+        setIsAutomaticRecording(type.isAutomatic);
         setIsModalOpen(false);
         setRecordingDuration(type.userDuration);
     };
@@ -215,6 +219,7 @@ const Template = () => {
             if(!isEmpty(currentStreamedMessage)) {
                 setMessages(prevMessages => [...prevMessages, { role: currentStreamedMessage.role, content: currentStreamedMessage.content }]);
             }
+            console.log('called');
             await startRecording();
             setIsRecording(true);
             setCurrentStreamedMessage({});
@@ -258,6 +263,48 @@ const Template = () => {
         }
     }, [stopRecording, data?.templateBySlug?.id, messages]);
 
+    const startAutomaticRecording = useCallback(() => {
+        console.log(isCallActive);
+        if (isAutomaticRecording && isCallActive) {
+            handleStartRecording();
+            console.log(recordingDuration);
+            automaticRecordingTimeoutRef.current = setTimeout(() => {
+                handleStopRecording();
+                const checkResponseComplete = setInterval(() => {
+                    if (!isStreamingRef.current) {
+                        clearInterval(checkResponseComplete);
+                        startAutomaticRecording();
+                    }
+                }, 100);
+            }, recordingDuration * 1000);
+        }
+    }, [isAutomaticRecording, isCallActive, recordingDuration, handleStartRecording, handleStopRecording]);
+
+    const handleStartCall = useCallback(() => {
+        setIsCallActive(true);
+        if (isAutomaticRecording) {
+            startAutomaticRecording();
+        }
+    }, [isAutomaticRecording, startAutomaticRecording]);
+
+    const handleEndCall = useCallback(() => {
+        setIsCallActive(false);
+        if (isRecording) {
+            handleStopRecording();
+        }
+        if (automaticRecordingTimeoutRef.current) {
+            clearTimeout(automaticRecordingTimeoutRef.current);
+        }
+    }, [isRecording, handleStopRecording]);
+
+    useEffect(() => {
+        return () => {
+            if (automaticRecordingTimeoutRef.current) {
+                clearTimeout(automaticRecordingTimeoutRef.current);
+            }
+        };
+    }, []);
+
     const isEmpty = (obj) => Object.keys(obj).length === 0;
 
     if (loading || typeLoading) return <div className="flex items-center justify-center h-screen">Loading...</div>;
@@ -286,10 +333,12 @@ const Template = () => {
                 <ChatBottom 
                     isAudioType={isAudioType}
                     onSendMessage={handleSendMessage}
-                    onStartRecording={handleStartRecording}
-                    onStopRecording={handleStopRecording}
+                    onStartRecording={isAutomaticRecording ? handleStartCall : handleStartRecording}
+                    onStopRecording={isAutomaticRecording ? handleEndCall : handleStopRecording}
                     isRecording={isRecording}
                     onOpenSettings={handleOpenModal}
+                    isCallActive={isCallActive}
+                    isAutomaticRecording={isAutomaticRecording}
                 />
                 <TypeSettingsModal
                     isOpen={isModalOpen}
