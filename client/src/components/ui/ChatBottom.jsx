@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { CornerDownLeft } from 'lucide-react';
+import { CornerDownLeft, Settings } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import CallControlPanel from './AudioWave';
 
-const ChatBottom = ({ onSendMessage, isAudioType, onStartRecording, onStopRecording, isRecording }) => {
+const ChatBottom = ({ onSendMessage, isAudioType, onStartRecording, onStopRecording, isRecording, onOpenSettings }) => {
     const { theme } = useTheme();
     const [message, setMessage] = useState('');
 
@@ -23,7 +23,7 @@ const ChatBottom = ({ onSendMessage, isAudioType, onStartRecording, onStopRecord
     };
 
     return (
-        <div className={`bg-background absolute bottom-10 h-36 w-full space-y-4 border-t px-4 py-2 shadow-lg sm:rounded-t-xl sm:border md:py-4 ${theme === 'dark' ? 'border-brand-darkBorder' : ''}`}>
+        <div className={`bg-background absolute bottom-10 h-36 w-full border-t px-8 py-2 shadow-lg sm:rounded-t-xl sm:border md:py-4 ${theme === 'dark' ? 'border-brand-darkBorder' : ''}`}>
             {!isAudioType ? 
                 (
                     <form onSubmit={handleSubmit}>
@@ -56,9 +56,14 @@ const ChatBottom = ({ onSendMessage, isAudioType, onStartRecording, onStopRecord
                     />
                 )
             }
-            <p className="text-muted-foreground px-2 text-center text-xs leading-normal block">
-                Buttons
-            </p>
+            <div className="flex justify-end m-0">
+                <button
+                    onClick={onOpenSettings}
+                    className="p-2 rounded-full hover:bg-theme-200 dark:hover:bg-theme-700 transition-colors"
+                >
+                    <Settings size={20} />
+                </button>
+            </div>
         </div>
     );
 };

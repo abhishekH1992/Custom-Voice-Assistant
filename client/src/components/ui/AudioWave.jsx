@@ -10,8 +10,8 @@ const CallControlPanel = ({ onStartRecording, onStopRecording, isRecording }) =>
     };
 
     return (
-        <div className="w-full p-4 flex items-center justify-center bg-gradient-to-t from-card via-card/90 to-card/0">
-            <div className="p-4 w-full bg-card border border-border rounded-lg shadow-sm flex items-center gap-4" style={{ opacity: 1, transform: 'translateY(0%) translateZ(0px)' }}>
+        <div className="w-full py-2 flex items-center justify-center bg-gradient-to-t from-card via-card/90 to-card/0">
+            <div className="px-4 py-2 w-full bg-card border border-border rounded-lg shadow-sm flex items-center gap-4" style={{ opacity: 1, transform: 'translateY(0%) translateZ(0px)' }}>
                 <button
                     type="button"
                     aria-pressed={isRecording}
@@ -29,7 +29,7 @@ const CallControlPanel = ({ onStartRecording, onStopRecording, isRecording }) =>
 
                 <button 
                     onClick={toggleRecording}
-                    className="justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-destructive text-destructive-foreground hover:bg-destructive/90 h-10 px-4 py-2 flex items-center gap-1"
+                    className="justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-destructive text-destructive-foreground hover:bg-destructive/90 h-10 px-4 py-2 flex items-center gap-1 hover:bg-theme-200 dark:hover:bg-theme-700"
                 >
                     <span><Phone className="size-4 opacity-50" /></span>
                     <span>{isRecording ? 'End Call' : 'Start Call'}</span>

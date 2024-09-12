@@ -8,6 +8,7 @@ import ChatMessage from '../components/ui/ChatMessage';
 import ChatBottom from '../components/ui/ChatBottom';
 import { MESSAGE_SUBSCRIPTION, AUDIO_SUBSCRIPTION, USER_SUBSCRIPTION } from '../graphql/subscriptions/conversation.subscription';
 import { SEND_MESSAGE, START_RECORDING, STOP_RECORDING, SEND_AUDIO_DATA } from '../graphql/mutations/conversation.mutation';
+import TypeSettingsModal from '../components/ui/TypeSettingsModal';
 
 const Template = () => {
     const { templateSlug } = useParams();
@@ -17,13 +18,16 @@ const Template = () => {
     const isStreamingRef = useRef(false);
     const streamedMessageRef = useRef('');
     const chatContainerRef = useRef(null);
-    const [isAudioType, setIsAudioType] = useState(true);
+    const [isAudioType, setIsAudioType] = useState(false);
     const [isRecording, setIsRecording] = useState(false);
     const mediaRecorderRef = useRef(null);
     const audioRef = useRef(new Audio());
     const audioQueue = useRef([]);
     const isPlayingAudio = useRef(false);
     const [userStreamedContent, setUserStreamedContent] = useState('');
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [selectedType, setSelectedType] = useState(null);
+    const [recordingDuration, setRecordingDuration] = useState(null);
 
     const { data, loading } = useQuery(GET_TEMPLATE_BY_SLUG, {
         variables: {
@@ -36,6 +40,25 @@ const Template = () => {
             isActive: true
         }
     });
+
+    useEffect(() => {
+        if (enableTypes && enableTypes.types && enableTypes.types.length > 0) {
+            const firstType = enableTypes.types[0];
+            setSelectedType(firstType);
+            setIsAudioType(firstType.isAudio);
+        }
+    }, [enableTypes]);
+
+    const handleOpenModal = () => {
+        setIsModalOpen(true);
+    };
+
+    const handleSelectType = (type) => {
+        setSelectedType(type);
+        setIsAudioType(type.isAudio);
+        setIsModalOpen(false);
+        setRecordingDuration(type.duration);
+    };
 
     const [sendMessage] = useMutation(SEND_MESSAGE);
     const [startRecording] = useMutation(START_RECORDING);
@@ -266,6 +289,14 @@ const Template = () => {
                     onStartRecording={handleStartRecording}
                     onStopRecording={handleStopRecording}
                     isRecording={isRecording}
+                    onOpenSettings={handleOpenModal}
+                />
+                <TypeSettingsModal
+                    isOpen={isModalOpen}
+                    onClose={() => setIsModalOpen(false)}
+                    types={enableTypes?.types || []}
+                    onSelectType={handleSelectType}
+                    selectedType={selectedType}
                 />
             </div>
         </>
