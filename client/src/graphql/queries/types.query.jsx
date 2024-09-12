@@ -10,6 +10,8 @@ export const GET_ENABLE_TYPES = gql`
             duration
             isText
             icon
+            isAutomatic
+            isContinous
         }
     }
 `;

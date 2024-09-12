@@ -7,6 +7,8 @@ const typeTypeDef = `#graphql
         duration: Int
         isText: Boolean
         isActive: Boolean
+        isAutomatic: Boolean
+        isContinous: Boolean
         icon: String
     }
     type Query {

@@ -16,6 +16,14 @@ module.exports = {
             defaultValue: true,
             allowNull: false
         });
+        await queryInterface.addColumn('Types', 'isAutomatic', {
+            type: Sequelize.INTEGER,
+            allowNull: true
+        });
+        await queryInterface.addColumn('Types', 'isContinous', {
+            type: Sequelize.INTEGER,
+            allowNull: true
+        });
     },
 
     async down (queryInterface, Sequelize) {
