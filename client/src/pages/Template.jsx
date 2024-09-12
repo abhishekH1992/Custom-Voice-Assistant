@@ -57,7 +57,7 @@ const Template = () => {
         setSelectedType(type);
         setIsAudioType(type.isAudio);
         setIsModalOpen(false);
-        setRecordingDuration(type.duration);
+        setRecordingDuration(type.userDuration);
     };
 
     const [sendMessage] = useMutation(SEND_MESSAGE);

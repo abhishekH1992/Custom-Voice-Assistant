@@ -14,7 +14,7 @@ const TypeSettingsModal = ({ isOpen, onClose, types, onSelectType, selectedType 
     const handleTypeSelect = (type) => {
         const updatedType = { 
             ...type, 
-            duration: durationValues[type.id] || type.duration 
+            userDuration: durationValues[type.id] || type.duration 
         };
         onSelectType(updatedType);
     };

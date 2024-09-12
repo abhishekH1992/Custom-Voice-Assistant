@@ -16,6 +16,14 @@ module.exports = {
             defaultValue: true,
             allowNull: false
         });
+        await queryInterface.addColumn('Types', 'isAutomatic', {
+            type: Sequelize.BOOLEAN,
+            allowNull: true
+        });
+        await queryInterface.addColumn('Types', 'isContinous', {
+            type: Sequelize.BOOLEAN,
+            allowNull: true
+        });
     },
 
     async down (queryInterface, Sequelize) {

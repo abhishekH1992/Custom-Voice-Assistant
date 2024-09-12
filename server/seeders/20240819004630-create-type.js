@@ -21,6 +21,7 @@ module.exports = {
                 isActive: true,
                 isText: false,
                 duration: 5,
+                isAutomatic: true,
                 icon: 'Headphones',
                 createdAt: new Date(),
                 updatedAt: new Date()
@@ -32,6 +33,7 @@ module.exports = {
                 isActive: true,
                 isText: false,
                 icon: 'Headset',
+                isContinous: true,
                 createdAt: new Date(),
                 updatedAt: new Date()
             },
