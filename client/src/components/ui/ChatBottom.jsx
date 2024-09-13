@@ -3,7 +3,7 @@ import { CornerDownLeft, Settings, SaveAll, ChartNetwork, Trash2 } from 'lucide-
 import { useTheme } from '../../context/ThemeContext';
 import CallControlPanel from './AudioWave';
 
-const ChatBottom = ({ onSendMessage, selectedType, onStartRecording, onStopRecording, isRecording, onOpenSettings, isCallActive, onSaveChat, onDeleteChat, savedChatId }) => {
+const ChatBottom = ({ onSendMessage, selectedType, onStartRecording, onStopRecording, isRecording, onOpenSettings, isCallActive, onSaveChat, onDeleteChat, savedChatId, onFeedback }) => {
     const { theme } = useTheme();
     const [message, setMessage] = useState('');
 
@@ -67,7 +67,7 @@ const ChatBottom = ({ onSendMessage, selectedType, onStartRecording, onStopRecor
                 </button>
                 {savedChatId && 
                     <button
-                        onClick={onSaveChat}
+                        onClick={onFeedback}
                         className="flex items-center p-2 rounded-md hover:bg-theme-200 dark:hover:bg-theme-700 transition-colors"
                     >
                         <ChartNetwork size={16} className="mr-2" />

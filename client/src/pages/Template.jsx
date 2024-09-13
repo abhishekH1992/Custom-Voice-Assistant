@@ -421,6 +421,10 @@ const Template = () => {
         }
     }
 
+    const onFeedback = () => {
+        navigate(`/analytics/${templateSlug}/${savedChatId}`);
+    }
+
     if (loading || typeLoading || savedChatLoading) return <div className="flex items-center justify-center h-screen">Loading...</div>;
 
     return (
@@ -455,6 +459,7 @@ const Template = () => {
                     onSaveChat={handleOpenSaveChatModal}
                     onDeleteChat={onDeleteChat}
                     savedChatId={savedChatId}
+                    onFeedback={onFeedback}
                 />
                 <TypeSettingsModal
                     isOpen={isModalOpen}
