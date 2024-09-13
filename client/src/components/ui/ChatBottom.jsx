@@ -3,7 +3,7 @@ import { CornerDownLeft, Settings } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import CallControlPanel from './AudioWave';
 
-const ChatBottom = ({ onSendMessage, isAudioType, onStartRecording, onStopRecording, isRecording, onOpenSettings }) => {
+const ChatBottom = ({ onSendMessage, selectedType, onStartRecording, onStopRecording, isRecording, onOpenSettings, isCallActive }) => {
     const { theme } = useTheme();
     const [message, setMessage] = useState('');
 
@@ -24,7 +24,7 @@ const ChatBottom = ({ onSendMessage, isAudioType, onStartRecording, onStopRecord
 
     return (
         <div className={`bg-background absolute bottom-10 h-36 w-full border-t px-8 py-2 shadow-lg sm:rounded-t-xl sm:border md:py-4 ${theme === 'dark' ? 'border-brand-darkBorder' : ''}`}>
-            {!isAudioType ? 
+            {selectedType && !selectedType.isAudio ? 
                 (
                     <form onSubmit={handleSubmit}>
                         <div className={`bg-background relative flex w-full grow flex-col overflow-hidden px-8 sm:rounded-md sm:border sm:px-12 ${theme === 'dark' ?  'border-brand-darkBorder' : ''}`}>
@@ -53,6 +53,7 @@ const ChatBottom = ({ onSendMessage, isAudioType, onStartRecording, onStopRecord
                         onStartRecording={onStartRecording}
                         onStopRecording={onStopRecording}
                         isRecording={isRecording}
+                        isCallActive={isCallActive}
                     />
                 )
             }

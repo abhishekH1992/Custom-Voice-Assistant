@@ -18,7 +18,6 @@ const Template = () => {
     const isStreamingRef = useRef(false);
     const streamedMessageRef = useRef('');
     const chatContainerRef = useRef(null);
-    const [isAudioType, setIsAudioType] = useState(false);
     const [isRecording, setIsRecording] = useState(false);
     const mediaRecorderRef = useRef(null);
     const audioRef = useRef(new Audio());
@@ -28,6 +27,9 @@ const Template = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedType, setSelectedType] = useState(null);
     const [recordingDuration, setRecordingDuration] = useState(null);
+    const [isSystemAudioComplete, setIsSystemAudioComplete] = useState(true);
+    const [isCallActive, setIsCallActive] = useState(false);
+    const [isUserInitiatedStop, setIsUserInitiatedStop] = useState(false);
 
     const { data, loading } = useQuery(GET_TEMPLATE_BY_SLUG, {
         variables: {
@@ -45,7 +47,6 @@ const Template = () => {
         if (enableTypes && enableTypes.types && enableTypes.types.length > 0) {
             const firstType = enableTypes.types[0];
             setSelectedType(firstType);
-            setIsAudioType(firstType.isAudio);
         }
     }, [enableTypes]);
 
@@ -55,7 +56,6 @@ const Template = () => {
 
     const handleSelectType = (type) => {
         setSelectedType(type);
-        setIsAudioType(type.isAudio);
         setIsModalOpen(false);
         setRecordingDuration(type.duration);
     };
@@ -123,7 +123,7 @@ const Template = () => {
         }
     }, [userStreamedContent]);
 
-    useSubscription(AUDIO_SUBSCRIPTION, {
+    const {data: audioData, error: audioErorr } = useSubscription(AUDIO_SUBSCRIPTION, {
         variables: { templateId: data?.templateBySlug?.id },
         onSubscriptionData: ({ subscriptionData }) => {
             const { content } = subscriptionData?.data?.audioStreamed;
@@ -135,6 +135,13 @@ const Template = () => {
             }
         }
     });
+
+    useEffect(() => {
+        if (audioErorr) {
+            // You can handle the error here, e.g., show a notification or alert
+            console.error('Audio subscription error:', audioErorr);
+        }
+    }, [audioErorr]);
 
     const playNextAudio = useCallback(() => {
         if (audioQueue.current.length > 0) {
@@ -168,6 +175,7 @@ const Template = () => {
 
             attemptPlay(0);
         } else {
+            setIsSystemAudioComplete(true);
             isPlayingAudio.current = false;
         }
     }, []);
@@ -242,8 +250,12 @@ const Template = () => {
         }
     }, [currentStreamedMessage, startRecording, sendAudioData]);
 
-    const handleStopRecording = useCallback(async () => {
+    const handleStopRecording = useCallback(async (isUserInitiated = false) => {
         setIsRecording(false);
+        if(isUserInitiated) {
+            setIsRecording(false);
+        }
+        setIsUserInitiatedStop(isUserInitiated);
         if (mediaRecorderRef.current) {
             mediaRecorderRef.current.stop();
             await stopRecording(
@@ -257,6 +269,35 @@ const Template = () => {
             setIsTyping(true);
         }
     }, [stopRecording, data?.templateBySlug?.id, messages]);
+
+    const handleStartCall = useCallback(async() => {
+        if(selectedType.isAutomatic) {
+            setIsCallActive(true);
+            setIsSystemAudioComplete(false);
+            setIsUserInitiatedStop(false);
+            handleStartRecording();
+        } else {
+            handleStartRecording();
+        }
+    }, [handleStartRecording, selectedType]);
+
+    useEffect(() => {
+        let recordingTimer;
+        if (isCallActive && selectedType && selectedType.isAutomatic && !isUserInitiatedStop) {
+            if (isRecording) {
+                recordingTimer = setTimeout(() => {
+                    handleStopRecording(false);
+                }, recordingDuration * 1000);
+            } else if (isSystemAudioComplete) {
+                handleStartRecording();
+                setIsSystemAudioComplete(false);
+            }
+        }
+
+        return () => {
+            clearTimeout(recordingTimer);
+        };
+    }, [isCallActive, isRecording, isSystemAudioComplete, recordingDuration, handleStartRecording, handleStopRecording, selectedType, isUserInitiatedStop]);     
 
     const isEmpty = (obj) => Object.keys(obj).length === 0;
 
@@ -284,12 +325,13 @@ const Template = () => {
                     )}
                 </div>
                 <ChatBottom 
-                    isAudioType={isAudioType}
+                    selectedType={selectedType}
                     onSendMessage={handleSendMessage}
-                    onStartRecording={handleStartRecording}
-                    onStopRecording={handleStopRecording}
+                    onStartRecording={handleStartCall}
+                    onStopRecording={() => handleStopRecording(true)}
                     isRecording={isRecording}
                     onOpenSettings={handleOpenModal}
+                    isCallActive={isCallActive}
                 />
                 <TypeSettingsModal
                     isOpen={isModalOpen}
