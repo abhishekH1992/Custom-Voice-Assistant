@@ -262,12 +262,12 @@ const Template = () => {
             );
             setIsTyping(true);
         }
-        if (isUserInitiated) {
+        if (isUserInitiated && selectedType.isAutomatic) {
+            setIsTyping(false);
             if (isStreamingRef.current) {
                 isStreamingRef.current = false;
                 setCurrentStreamedMessage({});
                 streamedMessageRef.current = '';
-                setIsTyping(false);
             }
             audioQueue.current = [];
             if (audioRef.current) {
@@ -280,7 +280,7 @@ const Template = () => {
                 setIsCallActive(false);
             }
         }
-    }, [stopRecording, data?.templateBySlug?.id, messages, isCallActive]);
+    }, [selectedType, stopRecording, data?.templateBySlug?.id, messages, isCallActive]);
 
     const handleStartCall = useCallback(async() => {
         if(selectedType.isAutomatic) {
@@ -321,15 +321,8 @@ const Template = () => {
             clearTimeout(recordingTimer);
         };
     }, [isCallActive, isRecording, isSystemAudioComplete, recordingDuration, handleStartRecording, handleStopRecording, selectedType, isUserInitiatedStop]);
-    
-    const formatTime = (seconds) => {
-        const minutes = Math.floor(seconds / 60);
-        const remainingSeconds = seconds % 60;
-        return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
-    };
 
     const isEmpty = (obj) => Object.keys(obj).length === 0;
-
     if (loading || typeLoading) return <div className="flex items-center justify-center h-screen">Loading...</div>;
 
     return (
@@ -343,7 +336,7 @@ const Template = () => {
                     {!isEmpty(userStreamedContent) && (
                         <ChatMessage message={{ role: 'user', content: userStreamedContent }} />
                     )}
-                    {!isEmpty(currentStreamedMessage) &&  (
+                    {!isEmpty(currentStreamedMessage) && currentStreamedMessage.content &&  (
                         <ChatMessage message={{ role: currentStreamedMessage.role, content: currentStreamedMessage.content }} />
                     )}
                     {isRecording && isEmpty(currentStreamedMessage) && (

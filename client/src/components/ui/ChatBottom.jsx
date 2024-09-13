@@ -60,9 +60,10 @@ const ChatBottom = ({ onSendMessage, selectedType, onStartRecording, onStopRecor
             <div className="flex justify-end m-0">
                 <button
                     onClick={onOpenSettings}
-                    className="p-2 rounded-full hover:bg-theme-200 dark:hover:bg-theme-700 transition-colors"
+                    className="flex items-center p-2 rounded-md hover:bg-theme-200 dark:hover:bg-theme-700 transition-colors"
                 >
-                    <Settings size={20} />
+                    <Settings size={20} className="mr-2" />
+                    <span className="text-sm hidden sm:block">Settings</span>
                 </button>
             </div>
         </div>
