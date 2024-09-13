@@ -10,6 +10,8 @@ module.exports = {
                 isAudio: true,
                 isActive: true,
                 isText: false,
+                isAutomatic: false,
+                isContinous: false,
                 icon: 'MicVocal',
                 createdAt: new Date(),
                 updatedAt: new Date(),
@@ -21,6 +23,8 @@ module.exports = {
                 isActive: true,
                 isText: false,
                 duration: 5,
+                isAutomatic: true,
+                isContinous: false,
                 icon: 'Headphones',
                 createdAt: new Date(),
                 updatedAt: new Date()
@@ -31,6 +35,8 @@ module.exports = {
                 isAudio: true,
                 isActive: true,
                 isText: false,
+                isAutomatic: false,
+                isContinous: true,
                 icon: 'Headset',
                 createdAt: new Date(),
                 updatedAt: new Date()
@@ -41,6 +47,8 @@ module.exports = {
                 isAudio: false,
                 isActive: true,
                 isText: true,
+                isAutomatic: false,
+                isContinous: false,
                 icon: 'MessageSquareMore',
                 createdAt: new Date(),
                 updatedAt: new Date()

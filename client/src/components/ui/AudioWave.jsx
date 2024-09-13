@@ -1,11 +1,16 @@
+import { useState } from 'react';
 import { Mic, Phone } from 'lucide-react';
 
 const CallControlPanel = ({ onStartRecording, onStopRecording, isRecording }) => {
+    const [buttonText, setButtonText] = useState('Start Call');
+
     const toggleRecording = () => {
         if (isRecording) {
             onStopRecording();
+            setButtonText('Start Call');
         } else {
             onStartRecording();
+            setButtonText('End Call');
         }
     };
 
@@ -32,7 +37,7 @@ const CallControlPanel = ({ onStartRecording, onStopRecording, isRecording }) =>
                     className="justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-destructive text-destructive-foreground hover:bg-destructive/90 h-10 px-4 py-2 flex items-center gap-1 hover:bg-theme-200 dark:hover:bg-theme-700"
                 >
                     <span><Phone className="size-4 opacity-50" /></span>
-                    <span>{isRecording ? 'End Call' : 'Start Call'}</span>
+                    <span>{buttonText}</span>
                 </button>
             </div>
         </div>
@@ -47,7 +52,7 @@ const AudioWaveform = ({ isRecording }) => (
                 const height = isRecording ? 2 + Math.random() * 28 : 2;
                 const y = 16 - height / 2;
                 return (
-                <rect key={index} height={height} width="2" x={x} y={y} rx="4" />
+                    <rect key={index} height={height} width="2" x={x} y={y} rx="4" />
                 );
             })}
         </svg>
