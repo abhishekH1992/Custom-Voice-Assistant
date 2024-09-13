@@ -1,12 +1,26 @@
 import { createContext, useState } from "react";
-import { ChevronLast, ChevronFirst, MoreVertical } from "lucide-react";
+import { ChevronLast, ChevronFirst, LogOut } from "lucide-react";
 import { useTheme } from "../../context/ThemeContext";
+import { useNavigate } from 'react-router-dom';
+import { useApolloClient } from '@apollo/client';
 
 export const SidebarContext = createContext(undefined);
 
 const SideNav = ({ children }) => {
     const [expanded, setExpanded] = useState(false);
     const { theme } = useTheme();
+    const navigate = useNavigate();
+    const client = useApolloClient();
+
+    const logout = async () => {
+        try {
+          localStorage.removeItem('token');
+          await client.resetStore();
+          navigate('/login');
+        } catch (error) {
+          console.error('Logout error:', error);
+        }
+    };
   
     return (
         <aside className="h-screen">
@@ -47,7 +61,7 @@ const SideNav = ({ children }) => {
                             <h4 className="font-semibold">John Doe</h4>
                             <span className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>johndoe@gmail.com</span>
                         </div>
-                        <MoreVertical size={20} />
+                        <LogOut onClick={logout} className="cursor-pointer" />
                     </div>
                 </div>
             </nav>
