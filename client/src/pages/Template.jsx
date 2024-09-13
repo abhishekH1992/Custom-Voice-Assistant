@@ -123,7 +123,7 @@ const Template = () => {
         }
     }, [userStreamedContent]);
 
-    const {data: audioData, error: audioErorr } = useSubscription(AUDIO_SUBSCRIPTION, {
+    useSubscription(AUDIO_SUBSCRIPTION, {
         variables: { templateId: data?.templateBySlug?.id },
         onSubscriptionData: ({ subscriptionData }) => {
             const { content } = subscriptionData?.data?.audioStreamed;
@@ -135,13 +135,6 @@ const Template = () => {
             }
         }
     });
-
-    useEffect(() => {
-        if (audioErorr) {
-            // You can handle the error here, e.g., show a notification or alert
-            console.error('Audio subscription error:', audioErorr);
-        }
-    }, [audioErorr]);
 
     const playNextAudio = useCallback(() => {
         if (audioQueue.current.length > 0) {
@@ -268,7 +261,28 @@ const Template = () => {
             );
             setIsTyping(true);
         }
-    }, [stopRecording, data?.templateBySlug?.id, messages]);
+        if (isUserInitiated) {
+            if (isStreamingRef.current) {
+                isStreamingRef.current = false;
+                if (!isEmpty(streamedMessageRef.current)) {
+                    setMessages(prev => [...prev, { role: 'system', content: streamedMessageRef.current }]);
+                }
+                setCurrentStreamedMessage({});
+                streamedMessageRef.current = '';
+                setIsTyping(false);
+            }
+            audioQueue.current = [];
+            if (audioRef.current) {
+                audioRef.current.pause();
+                audioRef.current.src = '';
+            }
+            isPlayingAudio.current = false;
+            setIsSystemAudioComplete(true);
+            if (isCallActive) {
+                setIsCallActive(false);
+            }
+        }
+    }, [stopRecording, data?.templateBySlug?.id, messages, isCallActive]);
 
     const handleStartCall = useCallback(async() => {
         if(selectedType.isAutomatic) {
