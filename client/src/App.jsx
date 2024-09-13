@@ -3,7 +3,7 @@ import { Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import { useQuery } from '@apollo/client';
 import SideNav from './components/nav/SideNav';
 import SidebarItem from './components/nav/SidebarItem';
-import { AudioLines } from 'lucide-react';
+import { AudioLines, SaveAllIcon } from 'lucide-react';
 import TemplateList from "./pages/TemplateList";
 import Template from './pages/Template';
 import { ME_QUERY } from './graphql/queries/me.query';
@@ -33,7 +33,8 @@ function App() {
         <div className="flex h-screen overflow-y-hidden scrollbar-hide">
             {!isAuthPage && (
                 <SideNav>
-                    <SidebarItem icon={<AudioLines size={20} />} text="Voice Chat" active />
+                    <SidebarItem icon={<AudioLines size={20} />} text="Voice Chat" to="/" active/>
+                    <SidebarItem icon={<SaveAllIcon size={20} />} text="Saved Chat" to="/saved-chats" />
                 </SideNav>
             )}
             <main className={`flex-1 flex flex-col ${isAuthPage ? 'w-full' : ''}`}>
