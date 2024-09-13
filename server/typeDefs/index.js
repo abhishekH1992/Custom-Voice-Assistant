@@ -4,13 +4,15 @@ const voiceTypeDef = require('./voices.typeDef.js');
 const templatesTypeDef = require('./templates.typeDef.js');
 const conversationTypeDef = require('./conversation.typeDef.js');
 const userTypeDef = require('./user.typeDef.js');
+const chatTypeDef= require('./chat.typeDef.js');
 
 const mergedTypeDef = mergeTypeDefs([
     typeTypeDef,
     voiceTypeDef,
     templatesTypeDef,
     conversationTypeDef,
-    userTypeDef
+    userTypeDef,
+    chatTypeDef
 ]);
 
 module.exports = mergedTypeDef;

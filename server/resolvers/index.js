@@ -4,13 +4,15 @@ const voicesResolver = require('./voices.resolver.js');
 const templatesResolver = require('./templates.resolver.js');
 const conversationResolver = require('./conversation.resolver.js');
 const userResolver = require('./user.resolver.js');
+const chatResolver = require('./chat.resolver.js');
 
 const mergedResolver = mergeResolvers([
     typeResolver,
     voicesResolver,
     templatesResolver,
     conversationResolver,
-    userResolver
+    userResolver,
+    chatResolver
 ]);
 
 module.exports = mergedResolver;

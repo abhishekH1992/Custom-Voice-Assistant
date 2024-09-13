@@ -16,7 +16,8 @@ module.exports = (sequelize, DataTypes) => {
   SavedChats.init({
     userId: DataTypes.INTEGER,
     templateId: DataTypes.INTEGER,
-    chats: DataTypes.JSONB
+    chats: DataTypes.JSONB,
+    name: DataTypes.STRING
   }, {
     sequelize,
     modelName: 'SavedChats',
