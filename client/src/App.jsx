@@ -10,6 +10,7 @@ import { ME_QUERY } from './graphql/queries/me.query';
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
 import { Toaster } from "react-hot-toast"
+import Feedback from './pages/Feedback';
 
 const ProtectedRoute = ({ children }) => {
     const { loading, error, data } = useQuery(ME_QUERY);
@@ -55,6 +56,11 @@ function App() {
                         <Route path='/template/:templateSlug/:savedChatId' element={
                             <ProtectedRoute>
                                 <Template />
+                            </ProtectedRoute>
+                        } />
+                        <Route path='/analytics/:templateSlug/:savedChatId' element={
+                            <ProtectedRoute>
+                                <Feedback />
                             </ProtectedRoute>
                         } />
                     </Routes>
