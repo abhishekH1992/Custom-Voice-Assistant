@@ -30,6 +30,7 @@ const Template = () => {
     const [isSystemAudioComplete, setIsSystemAudioComplete] = useState(true);
     const [isCallActive, setIsCallActive] = useState(false);
     const [isUserInitiatedStop, setIsUserInitiatedStop] = useState(false);
+    const [remainingTime, setRemainingTime] = useState(0);
 
     const { data, loading } = useQuery(GET_TEMPLATE_BY_SLUG, {
         variables: {
@@ -264,9 +265,6 @@ const Template = () => {
         if (isUserInitiated) {
             if (isStreamingRef.current) {
                 isStreamingRef.current = false;
-                if (!isEmpty(streamedMessageRef.current)) {
-                    setMessages(prev => [...prev, { role: 'system', content: streamedMessageRef.current }]);
-                }
                 setCurrentStreamedMessage({});
                 streamedMessageRef.current = '';
                 setIsTyping(false);
@@ -297,8 +295,19 @@ const Template = () => {
 
     useEffect(() => {
         let recordingTimer;
+        let countdownTimer;
         if (isCallActive && selectedType && selectedType.isAutomatic && !isUserInitiatedStop) {
             if (isRecording) {
+                setRemainingTime(recordingDuration);
+                countdownTimer = setInterval(() => {
+                    setRemainingTime(prevTime => {
+                        if (prevTime <= 1) {
+                            clearInterval(countdownTimer);
+                            return 0;
+                        }
+                        return prevTime - 1;
+                    });
+                }, 1000);
                 recordingTimer = setTimeout(() => {
                     handleStopRecording(false);
                 }, recordingDuration * 1000);
@@ -311,7 +320,13 @@ const Template = () => {
         return () => {
             clearTimeout(recordingTimer);
         };
-    }, [isCallActive, isRecording, isSystemAudioComplete, recordingDuration, handleStartRecording, handleStopRecording, selectedType, isUserInitiatedStop]);     
+    }, [isCallActive, isRecording, isSystemAudioComplete, recordingDuration, handleStartRecording, handleStopRecording, selectedType, isUserInitiatedStop]);
+    
+    const formatTime = (seconds) => {
+        const minutes = Math.floor(seconds / 60);
+        const remainingSeconds = seconds % 60;
+        return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+    };
 
     const isEmpty = (obj) => Object.keys(obj).length === 0;
 
@@ -332,7 +347,7 @@ const Template = () => {
                         <ChatMessage message={{ role: currentStreamedMessage.role, content: currentStreamedMessage.content }} />
                     )}
                     {isRecording && isEmpty(currentStreamedMessage) && (
-                        <ChatMessage message={{ role: 'user', content: 'Listening...' }} />
+                        <ChatMessage message={{ role: 'user', content: selectedType.isAutomatic ? `Listening...(${formatTime(remainingTime)} remaining)` : 'Listening...' }} />
                     )}
                     {isTyping && !isRecording && isEmpty(currentStreamedMessage) && (
                         <ChatMessage message={{ role: 'system', content: 'Thinking...' }} />
