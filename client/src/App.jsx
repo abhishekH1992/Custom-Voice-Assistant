@@ -1,3 +1,4 @@
+import React from 'react';
 import { Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import { useQuery } from '@apollo/client';
 import SideNav from './components/nav/SideNav';
@@ -20,7 +21,7 @@ const ProtectedRoute = ({ children }) => {
         return <Navigate to="/login" />;
     }
     
-    return data?.me ? children : <Navigate to="/login" />;
+    return React.cloneElement(children, { userData: data });
 }
 
 function App() {
@@ -46,6 +47,11 @@ function App() {
                             </ProtectedRoute>
                         } />
                         <Route path='/template/:templateSlug' element={
+                            <ProtectedRoute>
+                                <Template />
+                            </ProtectedRoute>
+                        } />
+                        <Route path='/template/:templateSlug/:savedChatId' element={
                             <ProtectedRoute>
                                 <Template />
                             </ProtectedRoute>

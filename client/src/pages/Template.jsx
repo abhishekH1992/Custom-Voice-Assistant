@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useSubscription } from '@apollo/client';
 import Header from '../components/nav/Header';
 import { GET_TEMPLATE_BY_SLUG } from '../graphql/queries/templates.query';
@@ -9,9 +9,14 @@ import ChatBottom from '../components/ui/ChatBottom';
 import { MESSAGE_SUBSCRIPTION, AUDIO_SUBSCRIPTION, USER_SUBSCRIPTION } from '../graphql/subscriptions/conversation.subscription';
 import { SEND_MESSAGE, START_RECORDING, STOP_RECORDING, SEND_AUDIO_DATA } from '../graphql/mutations/conversation.mutation';
 import TypeSettingsModal from '../components/ui/TypeSettingsModal';
+import { SAVE_CHAT, DELETE_CHAT } from '../graphql/mutations/chat.mutation';
+import SaveChatModal from '../components/ui/SaveChatModal';
+import { ME_QUERY } from '../graphql/queries/me.query';
+import toast from "react-hot-toast";
+import { GET_SAVED_CHAT } from '../graphql/queries/chat.query';
 
 const Template = () => {
-    const { templateSlug } = useParams();
+    const { templateSlug, savedChatId } = useParams();
     const [messages, setMessages] = useState([]);
     const [currentStreamedMessage, setCurrentStreamedMessage] = useState({});
     const [isTyping, setIsTyping] = useState(false);
@@ -31,13 +36,16 @@ const Template = () => {
     const [isCallActive, setIsCallActive] = useState(false);
     const [isUserInitiatedStop, setIsUserInitiatedStop] = useState(false);
     const [remainingTime, setRemainingTime] = useState(0);
+    const [isSaveChatModalOpen, setIsSaveChatModalOpen] = useState(false);
+    const [chatName, setChatName] = useState();
+    const navigate = useNavigate();
 
     const { data, loading } = useQuery(GET_TEMPLATE_BY_SLUG, {
         variables: {
             slug: templateSlug
         }
     });
-
+    const { loading: userLoading, error: userError, data: userData } = useQuery(ME_QUERY);
     const { data: enableTypes, loading: typeLoading } = useQuery(GET_ENABLE_TYPES, {
         variables: {
             isActive: true
@@ -51,8 +59,28 @@ const Template = () => {
         }
     }, [enableTypes]);
 
+    const { data: savedChat, loading: savedChatLoading } = useQuery(GET_SAVED_CHAT, {
+        variables: {
+            savedChatId,
+            userId: userData.me.id
+        }
+    });
+
+    useEffect(() => {
+        if (savedChat && savedChat.getSavedChatById) {
+            const { chats, name } = savedChat.getSavedChatById;
+            const transformedChats = Object.values(chats).filter(chat => typeof chat === 'object').map(({ role, content }) => ({ role, content }));
+            setMessages(transformedChats);
+            setChatName(name || data?.templateBySlug?.aiRole);
+        }
+    }, [savedChat]);
+
     const handleOpenModal = () => {
         setIsModalOpen(true);
+    };
+
+    const handleOpenSaveChatModal = () => {
+        setIsSaveChatModalOpen(true);
     };
 
     const handleSelectType = (type) => {
@@ -65,6 +93,9 @@ const Template = () => {
     const [startRecording] = useMutation(START_RECORDING);
     const [stopRecording] = useMutation(STOP_RECORDING);
     const [sendAudioData] = useMutation(SEND_AUDIO_DATA);
+
+    const [saveChat] = useMutation(SAVE_CHAT);
+    const [deleteChat] = useMutation(DELETE_CHAT);
 
     const scrollToBottom = () => {
         if (chatContainerRef.current) {
@@ -198,6 +229,7 @@ const Template = () => {
     }, [data?.templateBySlug?.id, sendMessage]);
 
     const handleSendMessage = useCallback((message) => {
+        console.log(messages);
         setMessages(prevMessages => {
             const newMessages = !isEmpty(currentStreamedMessage)
                 ? [...prevMessages, { role: 'system', content: currentStreamedMessage.content }, { role: 'user', content: message }]
@@ -316,18 +348,84 @@ const Template = () => {
                 setIsSystemAudioComplete(false);
             }
         }
-
         return () => {
             clearTimeout(recordingTimer);
         };
     }, [isCallActive, isRecording, isSystemAudioComplete, recordingDuration, handleStartRecording, handleStopRecording, selectedType, isUserInitiatedStop]);
 
     const isEmpty = (obj) => Object.keys(obj).length === 0;
-    if (loading || typeLoading) return <div className="flex items-center justify-center h-screen">Loading...</div>;
+
+    const handleSaveChat = async (name) => {
+        if (userLoading || userError || !userData?.me) {
+            toast.error('User not authenticated');
+            return;
+        }
+        try {
+            if(currentStreamedMessage.content) {
+                setMessages(prevMessages => [
+                    ...prevMessages,
+                    { role: currentStreamedMessage.role, content: currentStreamedMessage.content },
+                ]);
+            }
+
+            const result = await saveChat({
+                variables: {
+                    input: {
+                        userId: userData.me.id,
+                        templateId: data?.templateBySlug?.id,
+                        chats: messages,
+                        name: name ? name : chatName,
+                        id: savedChatId
+                    }
+                }
+            });
+    
+            if (result.data && result.data.saveChat && result.data.saveChat.success) {
+                setIsSaveChatModalOpen(false);
+                toast.success('Chat saved successfully');
+                const savedChatId = result.data.saveChat.savedChat.id;
+                navigate(`/template/${templateSlug}/${savedChatId}`);
+            } else {
+                toast.error('Failed to save chat');
+                throw new Error(result.data?.saveChat?.message || 'Failed to save chat');
+            }
+        } catch (error) {
+            console.error('Error saving chat:', error);
+            toast.error(error.message || 'Something went wrong. Try again later.');
+        }
+    };
+
+    const onDeleteChat = async() => {
+        if (userLoading || userError || !userData?.me) {
+            toast.error('User not authenticated');
+            return;
+        }
+        try {
+            const result = await deleteChat({
+                variables: { savedChatId, userId: userData.me.id }
+            });
+    
+            if (result.data) {
+                setIsSaveChatModalOpen(false);
+                toast.success('Chat deleted successfully');
+                navigate(`/template/${templateSlug}`);
+                setMessages([]);
+                setCurrentStreamedMessage('');
+                setChatName(data?.templateBySlug?.aiRole);
+            } else {
+                toast.error('Failed to delete chat');
+            }
+        } catch (error) {
+            console.error('Error saving chat:', error);
+            toast.error(error.message || 'Something went wrong. Try again later.');
+        }
+    }
+
+    if (loading || typeLoading || savedChatLoading) return <div className="flex items-center justify-center h-screen">Loading...</div>;
 
     return (
         <>
-            <Header name={data?.templateBySlug?.aiRole} icon={data?.templateBySlug?.icon} />
+            <Header name={chatName ? chatName : data?.templateBySlug?.aiRole} icon={data?.templateBySlug?.icon} />
             <div className="flex flex-col h-screen relative max-w-940 mx-auto items-center overflow-hidden">
                 <div ref={chatContainerRef} className="flex-grow w-full p-4 overflow-y-auto scrollbar-hide mb-40">
                     {messages && messages.map((message, index) => (
@@ -354,6 +452,9 @@ const Template = () => {
                     isRecording={isRecording}
                     onOpenSettings={handleOpenModal}
                     isCallActive={isCallActive}
+                    onSaveChat={handleOpenSaveChatModal}
+                    onDeleteChat={onDeleteChat}
+                    savedChatId={savedChatId}
                 />
                 <TypeSettingsModal
                     isOpen={isModalOpen}
@@ -361,6 +462,12 @@ const Template = () => {
                     types={enableTypes?.types || []}
                     onSelectType={handleSelectType}
                     selectedType={selectedType}
+                />
+                <SaveChatModal
+                    isOpen={isSaveChatModalOpen}
+                    onClose={() => setIsSaveChatModalOpen(false)}
+                    onSave={handleSaveChat}
+                    savedName={chatName}
                 />
             </div>
         </>

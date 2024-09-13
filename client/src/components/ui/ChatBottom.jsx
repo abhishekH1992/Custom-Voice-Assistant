@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { CornerDownLeft, Settings } from 'lucide-react';
+import { CornerDownLeft, Settings, SaveAll, ChartNetwork, Trash2 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import CallControlPanel from './AudioWave';
 
-const ChatBottom = ({ onSendMessage, selectedType, onStartRecording, onStopRecording, isRecording, onOpenSettings, isCallActive }) => {
+const ChatBottom = ({ onSendMessage, selectedType, onStartRecording, onStopRecording, isRecording, onOpenSettings, isCallActive, onSaveChat, onDeleteChat, savedChatId }) => {
     const { theme } = useTheme();
     const [message, setMessage] = useState('');
 
@@ -57,14 +57,39 @@ const ChatBottom = ({ onSendMessage, selectedType, onStartRecording, onStopRecor
                     />
                 )
             }
-            <div className="flex justify-end m-0">
+            <div className="flex justify-end m-0 gap-2">
                 <button
                     onClick={onOpenSettings}
                     className="flex items-center p-2 rounded-md hover:bg-theme-200 dark:hover:bg-theme-700 transition-colors"
                 >
-                    <Settings size={20} className="mr-2" />
-                    <span className="text-sm hidden sm:block">Settings</span>
+                    <Settings size={16} className="mr-2" />
+                    <span className="text-xs hidden sm:block">Settings</span>
                 </button>
+                {savedChatId && 
+                    <button
+                        onClick={onSaveChat}
+                        className="flex items-center p-2 rounded-md hover:bg-theme-200 dark:hover:bg-theme-700 transition-colors"
+                    >
+                        <ChartNetwork size={16} className="mr-2" />
+                        <span className="text-xs hidden sm:block">Feedback</span>
+                    </button>
+                }
+                <button
+                    onClick={onSaveChat}
+                    className="flex items-center p-2 rounded-md hover:bg-theme-200 dark:hover:bg-theme-700 transition-colors"
+                >
+                    <SaveAll size={16} className="mr-2" />
+                    <span className="text-xs hidden sm:block">Save</span>
+                </button>
+                {savedChatId && 
+                    <button
+                        onClick={onDeleteChat}
+                        className="flex items-center p-2 rounded-md hover:bg-theme-200 dark:hover:bg-theme-700 transition-colors"
+                    >
+                        <Trash2 size={16} className="mr-2" />
+                        <span className="text-xs hidden sm:block">Delete</span>
+                    </button>
+                }
             </div>
         </div>
     );
