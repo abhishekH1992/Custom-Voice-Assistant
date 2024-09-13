@@ -347,7 +347,7 @@ const Template = () => {
                         <ChatMessage message={{ role: currentStreamedMessage.role, content: currentStreamedMessage.content }} />
                     )}
                     {isRecording && isEmpty(currentStreamedMessage) && (
-                        <ChatMessage message={{ role: 'user', content: selectedType.isAutomatic ? `Listening...(${formatTime(remainingTime)} remaining)` : 'Listening...' }} />
+                        <ChatMessage message={{ role: 'user', content: selectedType.isAutomatic ? `Listening...(${remainingTime.toString()} seconds remaining)` : 'Listening...' }} />
                     )}
                     {isTyping && !isRecording && isEmpty(currentStreamedMessage) && (
                         <ChatMessage message={{ role: 'system', content: 'Thinking...' }} />
