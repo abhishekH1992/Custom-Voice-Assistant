@@ -44,7 +44,7 @@ const SentimentAnalysis = ({ data }) => {
                         }}
                     />
                     <Legend />
-                    <Line type="monotone" dataKey="sentiment" stroke="#8884d8" activeDot={{ r: 8 }} />
+                    <Line type="monotone" dataKey="Sentiment" stroke="#8884d8" activeDot={{ r: 8 }} />
                 </LineChart>
             </ResponsiveContainer>
         </div>

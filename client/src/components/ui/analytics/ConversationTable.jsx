@@ -29,7 +29,7 @@ const ConversationTable = ({ data }) => {
 
     return (
         <div className={isDark ? 'text-white' : 'text-black'}>
-            <div className={`text-md font-semibold mb-4 flex gap-2 ${isDark ? 'text-theme-200' : 'text-theme-800'}`}>
+            <div className={`text-md font-semibold mb-4 flex gap-2`}>
                 <Headphones /> Conversation Analysis
             </div>
             <div className="overflow-x-auto">
