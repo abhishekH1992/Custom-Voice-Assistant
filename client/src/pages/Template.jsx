@@ -426,13 +426,11 @@ const Template = () => {
             .then(stream => {
                 const audioContext = new AudioContext();
                 const source = audioContext.createMediaStreamSource(stream);
-                console.log(isSystemAudioComplete);
+
                 vadRef.current = vad(audioContext, stream, {
                     onVoiceStart: () => {
-                        if(isSystemAudioComplete) {
-                            console.log('Voice started');
-                            handleStartRecording();
-                        }
+                        console.log('Voice started');
+                        handleStartRecording();
                     },
                     onVoiceStop: () => {
                         console.log('Voice stopped');
@@ -445,7 +443,7 @@ const Template = () => {
                 });
             })
             .catch(err => console.error('Error accessing microphone:', err));
-    }, [handleStartRecording, handleStopRecording, isSystemAudioComplete]);
+    }, [handleStartRecording, handleStopRecording]);
 
     const stopVoiceActivityDetection = useCallback(() => {
         if (vadRef.current) {
@@ -468,7 +466,7 @@ const Template = () => {
             handleStartRecording();
         } else if(selectedType.isContinous) {
             setIsCallActive(true);
-            setIsSystemAudioComplete(true);
+            setIsSystemAudioComplete(false);
             setIsUserInitiatedStop(false);
             startVoiceActivityDetection();
         }else {
