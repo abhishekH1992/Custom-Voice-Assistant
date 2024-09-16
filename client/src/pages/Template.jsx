@@ -426,7 +426,7 @@ const Template = () => {
             .then(stream => {
                 const audioContext = new AudioContext();
                 const source = audioContext.createMediaStreamSource(stream);
-
+                console.log(isSystemAudioComplete);
                 vadRef.current = vad(audioContext, stream, {
                     onVoiceStart: () => {
                         if(isSystemAudioComplete) {
@@ -463,7 +463,7 @@ const Template = () => {
     const handleStartCall = useCallback(async() => {
         if(selectedType.isAutomatic) {
             setIsCallActive(true);
-            setIsSystemAudioComplete(true);
+            setIsSystemAudioComplete(false);
             setIsUserInitiatedStop(false);
             handleStartRecording();
         } else if(selectedType.isContinous) {
