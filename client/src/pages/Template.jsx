@@ -14,6 +14,7 @@ import SaveChatModal from '../components/ui/SaveChatModal';
 import { ME_QUERY } from '../graphql/queries/me.query';
 import toast from "react-hot-toast";
 import { GET_SAVED_CHAT } from '../graphql/queries/chat.query';
+import vad from 'voice-activity-detection';
 
 const Template = () => {
     const { templateSlug, savedChatId } = useParams();
@@ -39,6 +40,7 @@ const Template = () => {
     const [isSaveChatModalOpen, setIsSaveChatModalOpen] = useState(false);
     const [chatName, setChatName] = useState();
     const navigate = useNavigate();
+    const vadRef = useRef(null);
 
     const { data, loading } = useQuery(GET_TEMPLATE_BY_SLUG, {
         variables: {
@@ -242,7 +244,7 @@ const Template = () => {
         streamedMessageRef.current = '';
         isStreamingRef.current = false;
         setIsTyping(true);
-    }, [currentStreamedMessage, sendMessageToServer]);
+    }, [currentStreamedMessage, messages, sendMessageToServer]);
 
     const handleStartRecording = useCallback(async () => {
         try {
@@ -281,6 +283,9 @@ const Template = () => {
         if(isUserInitiated) {
             setIsRecording(false);
         }
+        if (selectedType.isContinuous) {
+            stopVoiceActivityDetection();
+        }
         setIsUserInitiatedStop(isUserInitiated);
         if (mediaRecorderRef.current) {
             mediaRecorderRef.current.stop();
@@ -313,17 +318,6 @@ const Template = () => {
             }
         }
     }, [selectedType, stopRecording, data?.templateBySlug?.id, messages, isCallActive]);
-
-    const handleStartCall = useCallback(async() => {
-        if(selectedType.isAutomatic) {
-            setIsCallActive(true);
-            setIsSystemAudioComplete(false);
-            setIsUserInitiatedStop(false);
-            handleStartRecording();
-        } else {
-            handleStartRecording();
-        }
-    }, [handleStartRecording, selectedType]);
 
     useEffect(() => {
         let recordingTimer;
@@ -424,6 +418,63 @@ const Template = () => {
     const onFeedback = () => {
         navigate(`/analytics/${templateSlug}/${savedChatId}`);
     }
+
+    const startVoiceActivityDetection = useCallback(() => {
+        if (vadRef.current) return;
+
+        navigator.mediaDevices.getUserMedia({ audio: true })
+            .then(stream => {
+                const audioContext = new AudioContext();
+                const source = audioContext.createMediaStreamSource(stream);
+
+                vadRef.current = vad(audioContext, stream, {
+                    onVoiceStart: () => {
+                        if(isSystemAudioComplete) {
+                            console.log('Voice started');
+                            handleStartRecording();
+                        }
+                    },
+                    onVoiceStop: () => {
+                        console.log('Voice stopped');
+                        setIsCallActive(false);
+                        handleStopRecording(false);
+                    },
+                    noiseCaptureDuration: 1000,
+                    minNoiseLevel: 0.2,
+                    maxNoiseLevel: 0.7
+                });
+            })
+            .catch(err => console.error('Error accessing microphone:', err));
+    }, [handleStartRecording, handleStopRecording, isSystemAudioComplete]);
+
+    const stopVoiceActivityDetection = useCallback(() => {
+        if (vadRef.current) {
+            vadRef.current.disconnect();
+            vadRef.current = null;
+        }
+    }, []);
+
+    useEffect(() => {
+        return () => {
+            stopVoiceActivityDetection();
+        };
+    }, [stopVoiceActivityDetection]);
+
+    const handleStartCall = useCallback(async() => {
+        if(selectedType.isAutomatic) {
+            setIsCallActive(true);
+            setIsSystemAudioComplete(true);
+            setIsUserInitiatedStop(false);
+            handleStartRecording();
+        } else if(selectedType.isContinous) {
+            setIsCallActive(true);
+            setIsSystemAudioComplete(true);
+            setIsUserInitiatedStop(false);
+            startVoiceActivityDetection();
+        }else {
+            handleStartRecording();
+        }
+    }, [handleStartRecording, selectedType, startVoiceActivityDetection]);
 
     if (loading || typeLoading || savedChatLoading) return <div className="flex items-center justify-center h-screen">Loading...</div>;
 
