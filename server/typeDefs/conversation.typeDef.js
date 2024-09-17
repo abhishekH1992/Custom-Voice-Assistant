@@ -19,6 +19,7 @@ const conversationTypeDef = `#graphql
 
     type Mutation {
         sendMessage(templateId: ID!, messages: [InputMessage!]!): Boolean
+        sendAudioMessage(templateId: ID!, messages: [InputMessage!]!, userTranscribe: String!): Boolean
         startRecording: Boolean
         stopRecording(templateId: ID!, messages: [InputMessage!]!): Boolean
         sendAudioData(data: String!): Boolean

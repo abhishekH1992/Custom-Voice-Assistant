@@ -1,18 +1,16 @@
 const { Template } = require('../models');
 const { PubSub } = require('graphql-subscriptions');
-const { textCompletion, transcribeAudio, combinedStream } = require('../utils/conversation.util');
-const fs = require('fs');
-const path = require('path');
-const os = require('os');
+const { textCompletion } = require('../utils/conversation.util');
+const dotenv = require('dotenv');
 
+dotenv.config();
 const pubsub = new PubSub();
-let audioChunks = [];
 
 const conversationResolver = {
     Mutation: {
         sendMessage: async (_, { templateId, messages }) => {
             try {
-                const template = await Template.findByPk(templateId);
+                const template = await Template.findByPk(templateId); //Add cache
                 
                 const stream = await textCompletion(
                     template.model,
@@ -36,69 +34,51 @@ const conversationResolver = {
                 return false;
             }
         },
-        startRecording: () => {
-            audioChunks = [];
-            console.log('Started recording');
-            return true;
-        },
-        stopRecording: async (_, { templateId, messages }) => {
-            const audioBuffer = Buffer.concat(audioChunks);
-            const fileName = `audio_${Date.now()}.wav`;
-            const filePath = path.join(__dirname, '..', 'temp', fileName);
-            
-            fs.writeFileSync(filePath, audioBuffer);
-        
+        sendAudioMessage: async (_, { templateId, messages, userTranscribe }) => {
             try {
-                const transcriptionStream = await transcribeAudio(filePath);
-                let fullTranscription = '';
-                for await (const part of transcriptionStream) {
-                    const transcriptionPart = part || '';
-                    fullTranscription += transcriptionPart;
-                }
-                pubsub.publish('USER_STREAMED', { 
-                    userStreamed: { content: fullTranscription },
-                    templateId
-                });
+                const template = await Template.findByPk(templateId);  //Add cache
 
-                fs.unlinkSync(filePath);
-
-                const template = await Template.findByPk(templateId);
-                const stream = await textCompletion(
+                const transcribe = await textCompletion(
                     template.model,
                     [
-                        { 'role': 'system', content: template.prompt },
-                        ...messages,
-                        { 'role': 'user', content: fullTranscription }
+                        { 'role': 'system', content: process.env.USER_TRANSCRIBE_PROMPT },
+                        { 'role': 'user', content: userTranscribe }
                     ],
                     true
                 );
 
-                const combinedStreamInstance = combinedStream(stream, templateId);
-                for await (const part of combinedStreamInstance) {
-                    if (part.messageStreamed) {
-                        pubsub.publish('MESSAGE_STREAMED', {
-                            messageStreamed: part.messageStreamed,
-                            templateId 
-                        });
-                    } 
-                    else if (part.audioStreamed) {
-                        pubsub.publish('AUDIO_STREAMED', {
-                            audioStreamed: part.audioStreamed,
-                            templateId
-                        });
-                    }
+                let fullTranscription;
+                for await (const part of transcribe) {
+                    const transcriptionPart = part || '';
+                    fullTranscription += transcriptionPart;
+
+                    pubsub.publish('USER_STREAMED', { 
+                        userStreamed: { content: part },
+                        templateId
+                    });
+                }
+
+                const stream = await textCompletion(
+                    template.model,
+                    [
+                        { 'role': 'system', content: template.prompt },
+                        ...messages
+                    ],
+                    true
+                );
+
+                for await (const part of stream) {
+                    pubsub.publish('MESSAGE_STREAMED', { 
+                        messageStreamed: { role: 'system', content: part.choices[0]?.delta?.content || '' },
+                        templateId
+                    });
                 }
         
                 return true;
             } catch (error) {
-                console.error('Error transcribing audio or generating response:', error);
+                console.error('Error sending message to OpenAI:', error);
                 return false;
             }
-        },
-        sendAudioData: (_, { data }) => {
-            const audioData = Buffer.from(data, 'base64');
-            audioChunks.push(audioData);
-            return true;
         },
     },
     Subscription: {
@@ -116,15 +96,6 @@ const conversationResolver = {
             resolve: (payload, variables) => {
                 if (payload.templateId === variables.templateId) {
                     return payload.userStreamed;
-                }
-                return null;
-            },
-        },
-        audioStreamed: {
-            subscribe: (_, { templateId }) => pubsub.asyncIterator(['AUDIO_STREAMED']),
-            resolve: (payload, variables) => {
-                if (payload.templateId === variables.templateId) {
-                    return payload.audioStreamed;
                 }
                 return null;
             },
