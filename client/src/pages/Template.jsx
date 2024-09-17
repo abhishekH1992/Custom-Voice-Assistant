@@ -1,6 +1,6 @@
-import { useRef, useState, useEffect, useCallback } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { useQuery, useMutation, useSubscription } from '@apollo/client';
+import { useQuery, useSubscription } from '@apollo/client';
 import Header from '../components/nav/Header';
 import { GET_TEMPLATE_BY_SLUG } from '../graphql/queries/templates.query';
 import { GET_ENABLE_TYPES } from '../graphql/queries/types.query';
@@ -11,7 +11,7 @@ import SaveChatModal from '../components/ui/SaveChatModal';
 import { ME_QUERY } from '../graphql/queries/me.query';
 import { GET_SAVED_CHAT } from '../graphql/queries/chat.query';
 import { MESSAGE_SUBSCRIPTION } from '../graphql/subscriptions/conversation.subscription';
-import { SEND_MESSAGE } from '../graphql/mutations/conversation.mutation';
+import { useTextCompletion } from '../hooks/useTextCompletion';
 
 const Template = () => {
     const { templateSlug, savedChatId } = useParams();
@@ -42,7 +42,6 @@ const Template = () => {
     };
 
     const isEmpty = (obj) => Object.keys(obj).length === 0;
-    const [sendMessage] = useMutation(SEND_MESSAGE);
 
     useSubscription(MESSAGE_SUBSCRIPTION, {
         variables: { templateId: data?.templateBySlug?.id },
@@ -105,31 +104,7 @@ const Template = () => {
         // Implementation for feedback
     };
 
-    const sendMessageToServer = useCallback(async (messages) => {
-        try {
-            scrollToBottom();
-            await sendMessage({
-                variables: {
-                    templateId: data?.templateBySlug?.id,
-                    messages: messages
-                }
-            });
-        } catch (error) {
-            console.error('Error sending message:', error);
-        }
-    }, [data?.templateBySlug?.id, sendMessage]);
-
-    const handleSendMessage = useCallback((message) => {
-        setMessages(prevMessages => {
-            const newMessages = !isEmpty(streamingMessage)
-                ? [...prevMessages, { role: 'system', content: streamingMessage.content }, { role: 'user', content: message }]
-                : [...prevMessages, { role: 'user', content: message }];
-            sendMessageToServer(newMessages);
-            return newMessages;
-        });
-        setIsThinking(true);
-        setStreamingMessage({});
-    }, [streamingMessage, sendMessageToServer]);
+    const { handleSendMessage } = useTextCompletion(data?.templateBySlug?.id, streamingMessage, setStreamingMessage, setMessages, setIsThinking, scrollToBottom, isEmpty)
 
     if (loading || typeLoading || savedChatLoading || userLoading) {
         return <div className="flex items-center justify-center h-screen">Loading...</div>;
