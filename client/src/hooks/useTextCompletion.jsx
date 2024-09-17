@@ -17,8 +17,9 @@ export const useTextCompletion = (templateId, streamingMessage, setStreamingMess
             });
         } catch (error) {
             console.error('Error sending message:', error);
+            toast.error('Something went wrong! Please refesh the page.')
         }
-    }, [templateId, sendMessage]);
+    }, [scrollToBottom, sendMessage, templateId]);
 
     const handleSendMessage = useCallback((message) => {
         setMessages(prevMessages => {
