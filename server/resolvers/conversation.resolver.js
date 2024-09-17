@@ -22,10 +22,12 @@ const conversationResolver = {
                 );
 
                 for await (const part of stream) {
-                    pubsub.publish('MESSAGE_STREAMED', { 
-                        messageStreamed: { role: 'system', content: part.choices[0]?.delta?.content || '' },
-                        templateId
-                    });
+                    if(part.choices[0]?.delta?.content !== undefined) {
+                        pubsub.publish('MESSAGE_STREAMED', { 
+                            messageStreamed: { role: 'system', content: part.choices[0]?.delta?.content || '' },
+                            templateId
+                        });
+                    }
                 }
         
                 return true;

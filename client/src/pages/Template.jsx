@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
-import { useQuery, useSubscription, useMutation } from '@apollo/client';
+import { useQuery, useMutation, useSubscription } from '@apollo/client';
 import Header from '../components/nav/Header';
 import { GET_TEMPLATE_BY_SLUG } from '../graphql/queries/templates.query';
 import { GET_ENABLE_TYPES } from '../graphql/queries/types.query';
@@ -10,7 +10,6 @@ import TypeSettingsModal from '../components/ui/TypeSettingsModal';
 import SaveChatModal from '../components/ui/SaveChatModal';
 import { ME_QUERY } from '../graphql/queries/me.query';
 import { GET_SAVED_CHAT } from '../graphql/queries/chat.query';
-import useSpeechToText from '../hooks/useSpeechToText';
 import { MESSAGE_SUBSCRIPTION } from '../graphql/subscriptions/conversation.subscription';
 import { SEND_MESSAGE } from '../graphql/mutations/conversation.mutation';
 
@@ -21,11 +20,9 @@ const Template = () => {
     const [isSaveChatModalOpen, setIsSaveChatModalOpen] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const chatContainerRef = useRef(null);
-    const [isTyping, setIsTyping] = useState(false);
     const [messages, setMessages] = useState([]);
-    const [streamedMessage, setStreamedMessage] = useState(null);
-    const streamedContentRef = useRef('');
-    const isStreamingRef = useRef(false);
+    const [streamingMessage, setStreamingMessage] = useState({});
+    const [isThinking, setIsThinking] = useState(false);
 
     const { data, loading } = useQuery(GET_TEMPLATE_BY_SLUG, {
         variables: { slug: templateSlug }
@@ -46,6 +43,23 @@ const Template = () => {
 
     const isEmpty = (obj) => Object.keys(obj).length === 0;
     const [sendMessage] = useMutation(SEND_MESSAGE);
+
+    useSubscription(MESSAGE_SUBSCRIPTION, {
+        variables: { templateId: data?.templateBySlug?.id },
+        onSubscriptionData: ({ subscriptionData }) => {
+            const { role, content } = subscriptionData?.data?.messageStreamed;
+            if (content !== undefined) {
+                setStreamingMessage((prevMessage) => {
+                    if (!prevMessage) {
+                        return { role, content };
+                    }
+                    return { ...prevMessage, role, content: prevMessage.content ? prevMessage.content + content : '' + content };
+                });
+                if(isThinking) setIsThinking(false);
+                scrollToBottom();
+            }
+        }
+    });
 
     useEffect(() => {
         if (enableTypes && enableTypes.types && enableTypes.types.length > 0) {
@@ -91,9 +105,31 @@ const Template = () => {
         // Implementation for feedback
     };
 
-    const handleSendMessage = () => {
-        // Implementation for feedback
-    };
+    const sendMessageToServer = useCallback(async (messages) => {
+        try {
+            scrollToBottom();
+            await sendMessage({
+                variables: {
+                    templateId: data?.templateBySlug?.id,
+                    messages: messages
+                }
+            });
+        } catch (error) {
+            console.error('Error sending message:', error);
+        }
+    }, [data?.templateBySlug?.id, sendMessage]);
+
+    const handleSendMessage = useCallback((message) => {
+        setMessages(prevMessages => {
+            const newMessages = !isEmpty(streamingMessage)
+                ? [...prevMessages, { role: 'system', content: streamingMessage.content }, { role: 'user', content: message }]
+                : [...prevMessages, { role: 'user', content: message }];
+            sendMessageToServer(newMessages);
+            return newMessages;
+        });
+        setIsThinking(true);
+        setStreamingMessage({});
+    }, [streamingMessage, sendMessageToServer]);
 
     if (loading || typeLoading || savedChatLoading || userLoading) {
         return <div className="flex items-center justify-center h-screen">Loading...</div>;
@@ -107,6 +143,8 @@ const Template = () => {
                     {messages && messages.map((message, index) => (
                         <ChatMessage key={`${message.role}-${index}`} message={message} />
                     ))}
+                    {!isEmpty(streamingMessage) && <ChatMessage message={streamingMessage} />}
+                    {isThinking && <ChatMessage message={{ role: 'system', content: 'Thinking...' }} />}
                 </div>
                 <ChatBottom 
                     selectedType={selectedType}
