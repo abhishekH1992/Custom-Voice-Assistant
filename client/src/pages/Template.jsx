@@ -62,32 +62,17 @@ const Template = () => {
                 });
                 scrollToBottom();
                 if(isThinking) setIsThinking(false);
-                setSpeechQueue(prevQueue => [...prevQueue, content]);
+                if(selectedType.isAudio) {
+                    speakText(content);
+                }
             }
         }
     });
 
     const speakText = useCallback((text) => {
-        return new Promise((resolve) => {
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.onend = resolve;
-            speechSynthesisRef.current.speak(utterance);
-        });
+        const utterance = new SpeechSynthesisUtterance(text);
+        speechSynthesisRef.current.speak(utterance);
     }, []);
-
-    const processSpeechQueue = useCallback(async () => {
-        if (speechQueue.length > 0 && !isSpeaking) {
-            setIsSpeaking(true);
-            const textToSpeak = speechQueue[0];
-            await speakText(textToSpeak);
-            setSpeechQueue(prevQueue => prevQueue.slice(1));
-            setIsSpeaking(false);
-        }
-    }, [speechQueue, isSpeaking, speakText]);
-    
-    useEffect(() => {
-        processSpeechQueue();
-    }, [speechQueue, isSpeaking, processSpeechQueue]);
 
     useSubscription(USER_SUBSCRIPTION, {
         variables: { templateId: data?.templateBySlug?.id },

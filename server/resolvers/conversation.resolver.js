@@ -85,25 +85,27 @@ const conversationResolver = {
                     ];
                 }
                 
+                // const stream = await textCompletion(
+                //     template.model,
+                //     conversationHistory,
+                //     true
+                // );
+                // for await (const part of stream) {
+                //     pubsub.publish('MESSAGE_STREAMED', { 
+                //         messageStreamed: { role: 'system', content: part.choices[0]?.delta?.content || '' },
+                //         templateId
+                //     });
+                // }
+
                 const stream = await textCompletion(
                     template.model,
                     conversationHistory,
-                    true
+                    false
                 );
-
-                let response = '';
-                for await (const part of stream) {
-                    // response += part.choices[0]?.delta?.content
-                    pubsub.publish('MESSAGE_STREAMED', { 
-                        messageStreamed: { role: 'system', content: part.choices[0]?.delta?.content || '' },
-                        templateId
-                    });
-                }
-                // console.log(response);
-                // pubsub.publish('MESSAGE_STREAMED', { 
-                //     messageStreamed: { role: 'system', content: response },
-                //     templateId
-                // });
+                pubsub.publish('MESSAGE_STREAMED', { 
+                    messageStreamed: { role: 'system', content: stream.choices[0].message.content },
+                    templateId
+                });
         
                 return true;
             } catch (error) {
