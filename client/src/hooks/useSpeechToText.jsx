@@ -4,7 +4,7 @@ import { SEND_AUDIO_MESSAGE } from '../graphql/mutations/conversation.mutation';
 import { useMutation } from '@apollo/client';
 import SpeechRecognition, { useSpeechRecognition } from 'react-speech-recognition';
 
-export const useSpeechToText = (templateId, streamingMessage, setStreamingMessage, setMessages, setIsThinking, isEmpty) => {
+export const useSpeechToText = (templateId, streamingMessage, setStreamingMessage, userStreamingMessage, setUserStreamingMessage, setMessages, setIsThinking, isEmpty) => {
     const [isListening, setIsListening] = useState(false);
     const [shouldSendAudio, setShouldSendAudio] = useState(false);
     const [currentTranscript, setCurrentTranscript] = useState('');
@@ -69,22 +69,26 @@ export const useSpeechToText = (templateId, streamingMessage, setStreamingMessag
             setIsThinking(true);
             setIsListening(false);
             setMessages(prevMessages => {
-                const newMessages = !isEmpty(streamingMessage)
-                    ? [...prevMessages, { role: 'system', content: streamingMessage.content }]
-                    : [...prevMessages];
-                
+                let newMessages = [...prevMessages];
+                if (!isEmpty(userStreamingMessage)) {
+                    newMessages = [...newMessages, { role: 'user', content: userStreamingMessage.content }];
+                }
+                if (!isEmpty(streamingMessage)) {
+                    newMessages = [...newMessages, { role: 'system', content: streamingMessage.content }];
+                }
                 setCurrentTranscript({ messages: newMessages, transcript });
                 setShouldSendAudio(true);
                 
                 return newMessages;
             });
             setStreamingMessage({});
+            setUserStreamingMessage({})
         } else {
             console.error('No transcript available');
             toast.error('No speech detected. Please try again.');
         }
         resetTranscript();
-    }, [isEmpty, setIsListening, setIsThinking, setMessages, setStreamingMessage, streamingMessage, transcript, resetTranscript]);
+    }, [transcript, resetTranscript, setIsThinking, setMessages, setStreamingMessage, setUserStreamingMessage, isEmpty, userStreamingMessage, streamingMessage]);
 
     return {
         isListening,

@@ -10,7 +10,7 @@ import TypeSettingsModal from '../components/ui/TypeSettingsModal';
 import SaveChatModal from '../components/ui/SaveChatModal';
 import { ME_QUERY } from '../graphql/queries/me.query';
 import { GET_SAVED_CHAT } from '../graphql/queries/chat.query';
-import { MESSAGE_SUBSCRIPTION } from '../graphql/subscriptions/conversation.subscription';
+import { MESSAGE_SUBSCRIPTION, USER_SUBSCRIPTION } from '../graphql/subscriptions/conversation.subscription';
 import { useTextCompletion } from '../hooks/useTextCompletion';
 import { useSpeechToText } from '../hooks/useSpeechToText';
 
@@ -23,6 +23,7 @@ const Template = () => {
     const chatContainerRef = useRef(null);
     const [messages, setMessages] = useState([]);
     const [streamingMessage, setStreamingMessage] = useState({});
+    const [userStreamingMessage, setUserStreamingMessage] = useState({});
     const [isThinking, setIsThinking] = useState(false);
 
     const { data, loading } = useQuery(GET_TEMPLATE_BY_SLUG, {
@@ -56,7 +57,22 @@ const Template = () => {
                     return { ...prevMessage, role, content: prevMessage.content ? prevMessage.content + content : '' + content };
                 });
                 if(isThinking) setIsThinking(false);
-                scrollToBottom();
+            }
+        }
+    });
+
+    useSubscription(USER_SUBSCRIPTION, {
+        variables: { templateId: data?.templateBySlug?.id },
+        onSubscriptionData: ({ subscriptionData }) => {
+            const { content } = subscriptionData?.data?.userStreamed || {};
+            if (content) {
+                setUserStreamingMessage((prevMessage) => {
+                    if (!prevMessage) {
+                        return { role: 'user', content };
+                    }
+                    return { ...prevMessage, role: 'user', content: prevMessage.content ? prevMessage.content + content : '' + content };
+                });
+                if(isThinking) setIsThinking(false);
             }
         }
     });
@@ -98,7 +114,7 @@ const Template = () => {
     };
 
     const { handleSendMessage } = useTextCompletion(data?.templateBySlug?.id, streamingMessage, setStreamingMessage, setMessages, setIsThinking, isEmpty);
-    const { isListening, onStartListening, onStopRecording } = useSpeechToText(data?.templateBySlug?.id, streamingMessage, setStreamingMessage, setMessages, setIsThinking, isEmpty);
+    const { isListening, onStartListening, onStopRecording } = useSpeechToText(data?.templateBySlug?.id, streamingMessage, setStreamingMessage, userStreamingMessage, setUserStreamingMessage, setMessages, setIsThinking, isEmpty);
 
     useEffect(() => {
         scrollToBottom();
@@ -116,6 +132,7 @@ const Template = () => {
                     {messages && messages.map((message, index) => (
                         <ChatMessage key={`${message.role}-${index}`} message={message} />
                     ))}
+                    {!isEmpty(userStreamingMessage) && <ChatMessage message={userStreamingMessage} />}
                     {!isEmpty(streamingMessage) && <ChatMessage message={streamingMessage} />}
                     {isThinking && <ChatMessage message={{ role: 'system', content: 'Thinking...' }} />}
                     {isListening && <ChatMessage message={{ role: 'user', content: 'Listening...' }} />}
