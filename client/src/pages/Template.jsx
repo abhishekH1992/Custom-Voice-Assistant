@@ -14,7 +14,6 @@ import { MESSAGE_SUBSCRIPTION, USER_SUBSCRIPTION } from '../graphql/subscription
 import { useTextCompletion } from '../hooks/useTextCompletion';
 import { useSpeechToText } from '../hooks/useSpeechToText';
 
-
 const Template = () => {
     const { templateSlug, savedChatId } = useParams();
     const [selectedType, setSelectedType] = useState(null);
@@ -27,8 +26,12 @@ const Template = () => {
     const [userStreamingMessage, setUserStreamingMessage] = useState({});
     const [isThinking, setIsThinking] = useState(false);
     const speechSynthesisRef = useRef(window.speechSynthesis);
-    const [speechQueue, setSpeechQueue] = useState([]);
-    const [isSpeaking, setIsSpeaking] = useState(false);
+    const [recordingDuration, setRecordingDuration] = useState(5);
+    const [autoRecordingTimeout, setAutoRecordingTimeout] = useState(null);
+    const [isUserInitiatedStop, setIsUserInitiatedStop] = useState(false);
+    const [isCallActive, setIsCallActive] = useState(false);
+    const [isAutoRecordingActive, setIsAutoRecordingActive] = useState(false);
+    const isAutoRecordingActiveRef = useRef(false);
 
     const { data, loading } = useQuery(GET_TEMPLATE_BY_SLUG, {
         variables: { slug: templateSlug }
@@ -69,11 +72,6 @@ const Template = () => {
         }
     });
 
-    const speakText = useCallback((text) => {
-        const utterance = new SpeechSynthesisUtterance(text);
-        speechSynthesisRef.current.speak(utterance);
-    }, []);
-
     useSubscription(USER_SUBSCRIPTION, {
         variables: { templateId: data?.templateBySlug?.id },
         onSubscriptionData: ({ subscriptionData }) => {
@@ -93,7 +91,7 @@ const Template = () => {
 
     useEffect(() => {
         if (enableTypes && enableTypes.types && enableTypes.types.length > 0) {
-            setSelectedType(enableTypes.types[0]);
+            setSelectedType(enableTypes.types[1]);
         }
     }, [enableTypes]);
 
@@ -113,6 +111,7 @@ const Template = () => {
     const handleSelectType = (type) => {
         setSelectedType(type);
         setIsModalOpen(false);
+        setRecordingDuration(type.duration);
     };
 
     const handleSaveChat = () => {
@@ -128,11 +127,62 @@ const Template = () => {
     };
 
     const { handleSendMessage } = useTextCompletion(data?.templateBySlug?.id, streamingMessage, setStreamingMessage, setMessages, setIsThinking, isEmpty);
-    const { isListening, onStartListening, onStopRecording } = useSpeechToText(data?.templateBySlug?.id, streamingMessage, setStreamingMessage, userStreamingMessage, setUserStreamingMessage, setMessages, setIsThinking, isEmpty);
+    const { isListening, onStartListening, onStopRecording } = useSpeechToText(data?.templateBySlug?.id, streamingMessage, setStreamingMessage, userStreamingMessage, setUserStreamingMessage, setMessages, setIsThinking, isEmpty, selectedType);
 
     useEffect(() => {
         scrollToBottom();
     }, [messages, streamingMessage]);
+
+    const startAutoRecording = useCallback(() => {
+        console.log('startAutoRecording', isAutoRecordingActiveRef.current);
+        if (selectedType.isAutomatic && isAutoRecordingActiveRef.current) {
+            onStartListening();
+            const timeout = setTimeout(() => {
+                onStopRecording();
+            }, recordingDuration * 1000);
+            setAutoRecordingTimeout(timeout);
+        }
+    }, [selectedType, onStartListening, recordingDuration, onStopRecording]);
+
+    const speakText = useCallback((text) => {
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.onend = () => {
+            if (selectedType.isAutomatic && isAutoRecordingActiveRef.current) {
+                startAutoRecording();
+            }
+        };
+        speechSynthesisRef.current.speak(utterance);
+    }, [selectedType, startAutoRecording]);
+
+    const startListening = useCallback(() => {
+        if(selectedType.isAutomatic) {
+            setIsAutoRecordingActive(true);
+            isAutoRecordingActiveRef.current = true;
+            setIsCallActive(true);
+            startAutoRecording();
+        } else {
+            onStartListening();
+        }
+    }, [selectedType, startAutoRecording, onStartListening]);
+
+    const stopRecording = useCallback(() => {
+        setIsUserInitiatedStop(true);
+        setIsCallActive(false);
+        setIsAutoRecordingActive(false);
+        isAutoRecordingActiveRef.current = false;
+        onStopRecording();
+        if (autoRecordingTimeout) {
+            clearTimeout(autoRecordingTimeout);
+        }
+    }, [onStopRecording, autoRecordingTimeout]);
+
+    useEffect(() => {
+        return () => {
+            if (autoRecordingTimeout) {
+                clearTimeout(autoRecordingTimeout);
+            }
+        };
+    }, [autoRecordingTimeout]);
 
     if (loading || typeLoading || savedChatLoading || userLoading) {
         return <div className="flex items-center justify-center h-screen">Loading...</div>;
@@ -159,9 +209,10 @@ const Template = () => {
                     onDeleteChat={onDeleteChat}
                     savedChatId={savedChatId}
                     onFeedback={onFeedback}
-                    onStartRecording={onStartListening}
-                    onStopRecording={onStopRecording}
+                    onStartRecording={startListening}
+                    onStopRecording={stopRecording}
                     isRecording={isListening}
+                    isCallActive={isCallActive}
                 />
                 <TypeSettingsModal
                     isOpen={isModalOpen}

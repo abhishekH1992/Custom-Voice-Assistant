@@ -4,7 +4,7 @@ import { SEND_AUDIO_MESSAGE } from '../graphql/mutations/conversation.mutation';
 import { useMutation } from '@apollo/client';
 import SpeechRecognition, { useSpeechRecognition } from 'react-speech-recognition';
 
-export const useSpeechToText = (templateId, streamingMessage, setStreamingMessage, userStreamingMessage, setUserStreamingMessage, setMessages, setIsThinking, isEmpty) => {
+export const useSpeechToText = (templateId, streamingMessage, setStreamingMessage, userStreamingMessage, setUserStreamingMessage, setMessages, setIsThinking, isEmpty, selectedType) => {
     const [isListening, setIsListening] = useState(false);
     const [shouldSendAudio, setShouldSendAudio] = useState(false);
     const [currentTranscript, setCurrentTranscript] = useState('');
@@ -50,8 +50,9 @@ export const useSpeechToText = (templateId, streamingMessage, setStreamingMessag
 
     const onStartListening = useCallback(() => {
         if (browserSupportsSpeechRecognition) {
+            console.log(selectedType.isAutomatic || selectedType.isContinous);
             try {
-                SpeechRecognition.startListening({ continuous: false });
+                SpeechRecognition.startListening({ continuous: selectedType.isAutomatic || selectedType.isContinous  });
                 setIsListening(true);
                 resetTranscript();
                 console.log('Started listening');
@@ -60,7 +61,7 @@ export const useSpeechToText = (templateId, streamingMessage, setStreamingMessag
                 toast.error(`Error starting speech recognition: ${error.message}`);
             }
         }
-    }, [browserSupportsSpeechRecognition, resetTranscript, setIsListening]);
+    }, [browserSupportsSpeechRecognition, resetTranscript, selectedType]);
 
     const onStopRecording = useCallback(() => {
         SpeechRecognition.stopListening();
