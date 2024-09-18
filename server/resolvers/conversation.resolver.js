@@ -79,7 +79,7 @@ const conversationResolver = {
                     conversationHistory,
                     true
                 );
-
+                
                 for await (const part of stream) {
                     pubsub.publish('MESSAGE_STREAMED', { 
                         messageStreamed: { role: 'system', content: part.choices[0]?.delta?.content || '' },

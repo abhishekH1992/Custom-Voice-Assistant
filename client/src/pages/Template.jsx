@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery, useSubscription } from '@apollo/client';
 import Header from '../components/nav/Header';
@@ -14,6 +14,7 @@ import { MESSAGE_SUBSCRIPTION, USER_SUBSCRIPTION } from '../graphql/subscription
 import { useTextCompletion } from '../hooks/useTextCompletion';
 import { useSpeechToText } from '../hooks/useSpeechToText';
 
+
 const Template = () => {
     const { templateSlug, savedChatId } = useParams();
     const [selectedType, setSelectedType] = useState(null);
@@ -25,6 +26,9 @@ const Template = () => {
     const [streamingMessage, setStreamingMessage] = useState({});
     const [userStreamingMessage, setUserStreamingMessage] = useState({});
     const [isThinking, setIsThinking] = useState(false);
+    const speechSynthesisRef = useRef(window.speechSynthesis);
+    const [speechQueue, setSpeechQueue] = useState([]);
+    const [isSpeaking, setIsSpeaking] = useState(false);
 
     const { data, loading } = useQuery(GET_TEMPLATE_BY_SLUG, {
         variables: { slug: templateSlug }
@@ -58,9 +62,32 @@ const Template = () => {
                 });
                 scrollToBottom();
                 if(isThinking) setIsThinking(false);
+                setSpeechQueue(prevQueue => [...prevQueue, content]);
             }
         }
     });
+
+    const speakText = useCallback((text) => {
+        return new Promise((resolve) => {
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.onend = resolve;
+            speechSynthesisRef.current.speak(utterance);
+        });
+    }, []);
+
+    const processSpeechQueue = useCallback(async () => {
+        if (speechQueue.length > 0 && !isSpeaking) {
+            setIsSpeaking(true);
+            const textToSpeak = speechQueue[0];
+            await speakText(textToSpeak);
+            setSpeechQueue(prevQueue => prevQueue.slice(1));
+            setIsSpeaking(false);
+        }
+    }, [speechQueue, isSpeaking, speakText]);
+    
+    useEffect(() => {
+        processSpeechQueue();
+    }, [speechQueue, isSpeaking, processSpeechQueue]);
 
     useSubscription(USER_SUBSCRIPTION, {
         variables: { templateId: data?.templateBySlug?.id },
