@@ -91,12 +91,19 @@ const conversationResolver = {
                     true
                 );
 
+                let response = '';
                 for await (const part of stream) {
+                    // response += part.choices[0]?.delta?.content
                     pubsub.publish('MESSAGE_STREAMED', { 
                         messageStreamed: { role: 'system', content: part.choices[0]?.delta?.content || '' },
                         templateId
                     });
                 }
+                // console.log(response);
+                // pubsub.publish('MESSAGE_STREAMED', { 
+                //     messageStreamed: { role: 'system', content: response },
+                //     templateId
+                // });
         
                 return true;
             } catch (error) {
