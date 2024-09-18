@@ -56,6 +56,7 @@ const Template = () => {
                     }
                     return { ...prevMessage, role, content: prevMessage.content ? prevMessage.content + content : '' + content };
                 });
+                scrollToBottom();
                 if(isThinking) setIsThinking(false);
             }
         }
@@ -72,6 +73,7 @@ const Template = () => {
                     }
                     return { ...prevMessage, role: 'user', content: prevMessage.content ? prevMessage.content + content : '' + content };
                 });
+                scrollToBottom();
                 if(isThinking) setIsThinking(false);
             }
         }
