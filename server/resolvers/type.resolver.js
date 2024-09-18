@@ -1,18 +1,29 @@
 const { Type } = require('../models');
+const { getRedisCached, addRedisCached } = require('../utils/redis.util');
 
 const typeResolver = {
     Query: {
         types: async (_, {isActive}) => {
+            const cacheKey = 'types:active';
+            const cacheKeyAll = 'types:all';
             try {
                 if(isActive) {
-                    const data = await Type.findAll({
-                        where: {
-                            isActive: true
-                        }
-                    });
+                    let data = await getRedisCached(cacheKey);
+                    if(!data) {
+                        data = await Type.findAll({
+                            where: {
+                                isActive: true
+                            }
+                        });
+                        await addRedisCached(cacheKey, data);
+                    }
                     return data;
                 } else {
-                    const data = await Type.findAll();
+                    let data = await getRedisCached(cacheKeyAll);
+                    if(!data) {
+                        data = await Type.findAll();
+                        await addRedisCached(cacheKeyAll, data);
+                    }
                     return data;
                 }
             } catch (error) {

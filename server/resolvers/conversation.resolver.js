@@ -2,6 +2,7 @@ const { Template } = require('../models');
 const { PubSub } = require('graphql-subscriptions');
 const { textCompletion } = require('../utils/conversation.util');
 const dotenv = require('dotenv');
+const { getRedisCached, addRedisCached } = require('../utils/redis.util');
 
 dotenv.config();
 const pubsub = new PubSub();
@@ -9,9 +10,14 @@ const pubsub = new PubSub();
 const conversationResolver = {
     Mutation: {
         sendMessage: async (_, { templateId, messages }) => {
+            const cacheKey = `template:${templateId}`;
             try {
-                const template = await Template.findByPk(templateId); //Add cache
-                
+                let template = await getRedisCached(cacheKey);
+                if(!template) {
+                    template = await Template.findByPk(templateId);
+                    await addRedisCached(cacheKey, template);
+                }
+
                 const stream = await textCompletion(
                     template.model,
                     [
@@ -37,8 +43,13 @@ const conversationResolver = {
             }
         },
         sendAudioMessage: async (_, { templateId, messages, userTranscribe }) => {
+            const cacheKey = `template:${templateId}`;
             try {
-                const template = await Template.findByPk(templateId);  //Add cache
+                let template = await getRedisCached(cacheKey);
+                if(!template) {
+                    template = await Template.findByPk(templateId);
+                    await addRedisCached(cacheKey, template);
+                }
 
                 const transcribe = await textCompletion(
                     template.model,
@@ -79,7 +90,7 @@ const conversationResolver = {
                     conversationHistory,
                     true
                 );
-                
+
                 for await (const part of stream) {
                     pubsub.publish('MESSAGE_STREAMED', { 
                         messageStreamed: { role: 'system', content: part.choices[0]?.delta?.content || '' },
