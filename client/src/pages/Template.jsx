@@ -73,7 +73,7 @@ const Template = () => {
             setMessages(transformedChats);
             setChatName(name || data?.templateBySlug?.aiRole);
         }
-    }, [savedChat]);
+    }, [data?.templateBySlug?.aiRole, savedChat]);
 
     const handleOpenModal = () => {
         setIsModalOpen(true);
@@ -169,12 +169,11 @@ const Template = () => {
     });
 
     const playNextAudio = useCallback(() => {
-        if (audioQueue.current.length > 0) {
+        if (audioQueue.current.length > 0 && !isUserInitiatedStop) {
             isPlayingAudio.current = true;
             const audioContent = audioQueue.current.shift();
             const audioChunk = base64ToArrayBuffer(audioContent);
             const audioFormats = ['audio/mpeg', 'audio/mp4', 'audio/webm', 'audio/ogg'];
-
             const attemptPlay = (formatIndex) => {
                 if (formatIndex >= audioFormats.length) {
                     console.error("Failed to play audio with all known formats");
@@ -197,7 +196,6 @@ const Template = () => {
                         attemptPlay(formatIndex + 1);
                     });
             };
-
             attemptPlay(0);
         } else {
             setIsSystemAudioComplete(true);
@@ -229,7 +227,6 @@ const Template = () => {
     }, [data?.templateBySlug?.id, sendMessage]);
 
     const handleSendMessage = useCallback((message) => {
-        console.log(messages);
         setMessages(prevMessages => {
             const newMessages = !isEmpty(currentStreamedMessage)
                 ? [...prevMessages, { role: 'system', content: currentStreamedMessage.content }, { role: 'user', content: message }]
@@ -242,6 +239,7 @@ const Template = () => {
         streamedMessageRef.current = '';
         isStreamingRef.current = false;
         setIsTyping(true);
+
     }, [currentStreamedMessage, sendMessageToServer]);
 
     const handleStartRecording = useCallback(async () => {
