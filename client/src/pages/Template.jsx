@@ -12,6 +12,7 @@ import { ME_QUERY } from '../graphql/queries/me.query';
 import { GET_SAVED_CHAT } from '../graphql/queries/chat.query';
 import { MESSAGE_SUBSCRIPTION } from '../graphql/subscriptions/conversation.subscription';
 import { useTextCompletion } from '../hooks/useTextCompletion';
+import { useSpeechToText } from '../hooks/useSpeechToText';
 
 const Template = () => {
     const { templateSlug, savedChatId } = useParams();
@@ -96,15 +97,12 @@ const Template = () => {
         // Implementation for feedback
     };
 
-    const onStopRecording = () => {
-        // Implementation for feedback
-    };
+    const { handleSendMessage } = useTextCompletion(data?.templateBySlug?.id, streamingMessage, setStreamingMessage, setMessages, setIsThinking, isEmpty);
+    const { isListening, onStartListening, onStopRecording } = useSpeechToText(data?.templateBySlug?.id, streamingMessage, setStreamingMessage, setMessages, setIsThinking, isEmpty);
 
-    const onStartListening = () => {
-        // Implementation for feedback
-    };
-
-    const { handleSendMessage } = useTextCompletion(data?.templateBySlug?.id, streamingMessage, setStreamingMessage, setMessages, setIsThinking, scrollToBottom, isEmpty)
+    useEffect(() => {
+        scrollToBottom();
+    }, [messages, streamingMessage]);
 
     if (loading || typeLoading || savedChatLoading || userLoading) {
         return <div className="flex items-center justify-center h-screen">Loading...</div>;
@@ -120,6 +118,7 @@ const Template = () => {
                     ))}
                     {!isEmpty(streamingMessage) && <ChatMessage message={streamingMessage} />}
                     {isThinking && <ChatMessage message={{ role: 'system', content: 'Thinking...' }} />}
+                    {isListening && <ChatMessage message={{ role: 'user', content: 'Listening...' }} />}
                 </div>
                 <ChatBottom 
                     selectedType={selectedType}
@@ -131,7 +130,7 @@ const Template = () => {
                     onFeedback={onFeedback}
                     onStartRecording={onStartListening}
                     onStopRecording={onStopRecording}
-                    isRecording={false}
+                    isRecording={isListening}
                 />
                 <TypeSettingsModal
                     isOpen={isModalOpen}

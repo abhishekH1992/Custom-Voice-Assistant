@@ -3,12 +3,11 @@ import toast from 'react-hot-toast';
 import { SEND_MESSAGE } from '../graphql/mutations/conversation.mutation';
 import { useMutation } from '@apollo/client';
 
-export const useTextCompletion = (templateId, streamingMessage, setStreamingMessage, setMessages, setIsThinking, scrollToBottom, isEmpty) => {
+export const useTextCompletion = (templateId, streamingMessage, setStreamingMessage, setMessages, setIsThinking, isEmpty) => {
     const [sendMessage] = useMutation(SEND_MESSAGE);
 
     const sendMessageToServer = useCallback(async (messages) => {
         try {
-            scrollToBottom();
             await sendMessage({
                 variables: {
                     templateId: templateId,
@@ -19,7 +18,7 @@ export const useTextCompletion = (templateId, streamingMessage, setStreamingMess
             console.error('Error sending message:', error);
             toast.error('Something went wrong! Please refesh the page.')
         }
-    }, [scrollToBottom, sendMessage, templateId]);
+    }, [sendMessage, templateId]);
 
     const handleSendMessage = useCallback((message) => {
         setMessages(prevMessages => {

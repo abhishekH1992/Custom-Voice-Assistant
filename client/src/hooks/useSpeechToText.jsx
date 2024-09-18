@@ -1,12 +1,14 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { SEND_AUDIO_MESSAGE } from '../graphql/mutations/conversation.mutation';
-import { useMutation, useSubscription } from '@apollo/client';
-import { MESSAGE_SUBSCRIPTION, USER_SUBSCRIPTION } from '../graphql/subscriptions/conversation.subscription';
+import { useMutation } from '@apollo/client';
 import SpeechRecognition, { useSpeechRecognition } from 'react-speech-recognition';
 
-const useSpeechToText = (templateId, scrollToBottom, messages, setMessages) => {
+export const useSpeechToText = (templateId, streamingMessage, setStreamingMessage, setMessages, setIsThinking, isEmpty) => {
     const [isListening, setIsListening] = useState(false);
+    const [shouldSendAudio, setShouldSendAudio] = useState(false);
+    const [currentTranscript, setCurrentTranscript] = useState('');
+
     const {
         transcript,
         resetTranscript,
@@ -15,40 +17,29 @@ const useSpeechToText = (templateId, scrollToBottom, messages, setMessages) => {
 
     const [sendAudioMessage] = useMutation(SEND_AUDIO_MESSAGE);
 
-    const sendAudioMessageToServer = useCallback(async (text) => {
-        try {
-            await sendAudioMessage({
-                variables: {
-                    templateId,
-                    messages,
-                    userTranscribe: text
+    useEffect(() => {
+        if (shouldSendAudio && currentTranscript) {
+            const sendAudioMessageToServer = async () => {
+                try {
+                    await sendAudioMessage({
+                        variables: {
+                            templateId,
+                            messages: currentTranscript.messages,
+                            userTranscribe: currentTranscript.transcript
+                        }
+                    });
+                } catch (error) {
+                    console.error('Error sending message:', error);
+                    toast.error('Something went wrong!');
+                    setIsThinking(false);
                 }
-            });
-        } catch (error) {
-            console.error('Error sending message:', error);
-            toast.error('Something went wrong!');
+            };
+
+            sendAudioMessageToServer();
+            setShouldSendAudio(false);
+            setCurrentTranscript('');
         }
-    }, [messages, sendAudioMessage, templateId]);
-
-    useSubscription(MESSAGE_SUBSCRIPTION, {
-        variables: { templateId },
-        onData: ({ data }) => {
-            if (data?.data?.messageStreamed) {
-                setMessages((prevMessages) => [...prevMessages, data.data.messageStreamed]);
-                scrollToBottom();
-            }
-        },
-    });
-
-    useSubscription(USER_SUBSCRIPTION, {
-        variables: { templateId },
-        onData: ({ data }) => {
-            if (data?.data?.userStreamed) {
-                // You might want to handle this differently now that we're using react-speech-recognition
-                console.log('User streamed:', data.data.userStreamed);
-            }
-        },
-    });
+    }, [shouldSendAudio, currentTranscript, sendAudioMessage, templateId, setIsThinking]);
 
     useEffect(() => {
         if (!browserSupportsSpeechRecognition) {
@@ -58,9 +49,9 @@ const useSpeechToText = (templateId, scrollToBottom, messages, setMessages) => {
     }, [browserSupportsSpeechRecognition]);
 
     const onStartListening = useCallback(() => {
-        if (browserSupportsSpeechRecognition && !isListening) {
+        if (browserSupportsSpeechRecognition) {
             try {
-                SpeechRecognition.startListening({ continuous: true });
+                SpeechRecognition.startListening({ continuous: false });
                 setIsListening(true);
                 resetTranscript();
                 console.log('Started listening');
@@ -69,23 +60,35 @@ const useSpeechToText = (templateId, scrollToBottom, messages, setMessages) => {
                 toast.error(`Error starting speech recognition: ${error.message}`);
             }
         }
-    }, [isListening, browserSupportsSpeechRecognition, resetTranscript]);
+    }, [browserSupportsSpeechRecognition, resetTranscript, setIsListening]);
 
     const onStopRecording = useCallback(() => {
-        if (isListening) {
-            SpeechRecognition.stopListening();
+        SpeechRecognition.stopListening();
+        console.log('Stopping recording. Final transcript:', transcript);
+        if (transcript) {
+            setIsThinking(true);
             setIsListening(false);
-            console.log('Stopping recording. Final transcript:', transcript);
-            if (transcript) {
-                sendAudioMessageToServer(transcript);
-            } else {
-                console.error('No transcript available');
-                toast.error('No speech detected. Please try again.');
-            }
+            setMessages(prevMessages => {
+                const newMessages = !isEmpty(streamingMessage)
+                    ? [...prevMessages, { role: 'system', content: streamingMessage.content }]
+                    : [...prevMessages];
+                
+                setCurrentTranscript({ messages: newMessages, transcript });
+                setShouldSendAudio(true);
+                
+                return newMessages;
+            });
+            setStreamingMessage({});
+        } else {
+            console.error('No transcript available');
+            toast.error('No speech detected. Please try again.');
         }
-    }, [isListening, sendAudioMessageToServer, transcript]);
+        resetTranscript();
+    }, [isEmpty, setIsListening, setIsThinking, setMessages, setStreamingMessage, streamingMessage, transcript, resetTranscript]);
 
-    return { isListening, transcript, onStartListening, onStopRecording };
+    return {
+        isListening,
+        onStartListening,
+        onStopRecording
+    };
 };
-
-export default useSpeechToText;

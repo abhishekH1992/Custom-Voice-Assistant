@@ -49,23 +49,34 @@ const conversationResolver = {
                     true
                 );
 
-                let fullTranscription;
+                let fullTranscription = '';
                 for await (const part of transcribe) {
-                    const transcriptionPart = part || '';
-                    fullTranscription += transcriptionPart;
-
-                    pubsub.publish('USER_STREAMED', { 
-                        userStreamed: { content: part },
-                        templateId
-                    });
+                    if(part.choices[0]?.delta?.content !== undefined) {
+                        const transcriptionPart = part.choices[0]?.delta?.content || '';
+                        fullTranscription += transcriptionPart;
+                        pubsub.publish('USER_STREAMED', { 
+                            userStreamed: { content: transcriptionPart },
+                            templateId
+                        });
+                    }
                 }
-
+                
+                let conversationHistory = [
+                    { 'role': 'system', content: template.prompt },
+                    { 'role': 'user', content: fullTranscription }
+                ];
+            
+                if (messages && messages.length > 0) {
+                    conversationHistory = [
+                        { 'role': 'system', content: template.prompt },
+                        ...messages,
+                        { 'role': 'user', content: fullTranscription }
+                    ];
+                }
+                
                 const stream = await textCompletion(
                     template.model,
-                    [
-                        { 'role': 'system', content: template.prompt },
-                        ...messages
-                    ],
+                    conversationHistory,
                     true
                 );
 
