@@ -124,6 +124,11 @@ const Template = () => {
                     content: streamedMessageRef.current
                 });
                 isStreamingRef.current = true;
+            } else if (isStreamingRef.current) {
+                if(!isEmpty(streamedMessageRef)) setMessages(prev => [...prev, { role: 'system', content: streamedMessageRef.current }]);
+                setCurrentStreamedMessage('');
+                streamedMessageRef.current = '';
+                isStreamingRef.current = false;
             }
         }
     });
@@ -134,7 +139,7 @@ const Template = () => {
             setCurrentStreamedMessage('');
             streamedMessageRef.current = '';
         }
-    }, [currentStreamedMessage]);
+    }, [currentStreamedMessage, messages]);
 
     useSubscription(USER_SUBSCRIPTION, {
         variables: { templateId: data?.templateBySlug?.id },
@@ -243,8 +248,8 @@ const Template = () => {
     }, [currentStreamedMessage, messages, sendMessageToServer]);
 
     const handleStartRecording = useCallback(async () => {
-        console.log('handleStartRecording');
         try {
+            console.log(currentStreamedMessage);
             if(!isEmpty(currentStreamedMessage)) {
                 setMessages(prevMessages => [...prevMessages, { role: currentStreamedMessage.role, content: currentStreamedMessage.content }]);
             }
@@ -289,7 +294,7 @@ const Template = () => {
             setIsContinuousMode(false);
         }
         setIsUserInitiatedStop(isUserInitiated);
-        if (mediaRecorderRef.current) {
+        if ((mediaRecorderRef.current && !selectedType.isAutomatic && !selectedType.isContinous) || (mediaRecorderRef.current && !isUserInitiated && (selectedType.isAutomatic || selectedType.isContinous))) {
             mediaRecorderRef.current.stop();
             await stopRecording(
                 { 
@@ -431,8 +436,11 @@ const Template = () => {
 
                 vadRef.current = vad(audioContext, stream, {
                     onVoiceStart: () => {
-                        console.log('Voice started');
-                        handleStartRecording();
+                        console.log(isSystemAudioComplete);
+                        if(isSystemAudioComplete) {
+                            console.log('Voice started');
+                            handleStartRecording();
+                        }
                     },
                     onVoiceStop: () => {
                         console.log('Voice stopped');
@@ -445,7 +453,7 @@ const Template = () => {
                 });
             })
             .catch(err => console.error('Error accessing microphone:', err));
-    }, [handleStartRecording, handleStopRecording]);
+    }, [handleStartRecording, handleStopRecording, isSystemAudioComplete]);
 
     useEffect(() => {
         return () => {
