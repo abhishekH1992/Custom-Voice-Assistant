@@ -245,11 +245,11 @@ const Template = () => {
     const handleStartRecording = useCallback(async () => {
         console.log('handleStartRecording');
         try {
-            setIsRecording(true);
             if(!isEmpty(currentStreamedMessage)) {
                 setMessages(prevMessages => [...prevMessages, { role: currentStreamedMessage.role, content: currentStreamedMessage.content }]);
             }
             await startRecording();
+            setIsRecording(true);
             setCurrentStreamedMessage({});
             streamedMessageRef.current = '';
             isStreamingRef.current = false;
@@ -289,7 +289,7 @@ const Template = () => {
             setIsContinuousMode(false);
         }
         setIsUserInitiatedStop(isUserInitiated);
-        if (mediaRecorderRef.current && !isUserInitiated) {
+        if (mediaRecorderRef.current) {
             mediaRecorderRef.current.stop();
             await stopRecording(
                 { 
