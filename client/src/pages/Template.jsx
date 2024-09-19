@@ -299,6 +299,8 @@ const Template = () => {
         }
         setIsUserInitiatedStop(isUserInitiated);
         if ((mediaRecorderRef.current && !selectedType.isAutomatic && !selectedType.isContinous) || (mediaRecorderRef.current && !isUserInitiated && (selectedType.isAutomatic || selectedType.isContinous))) {
+            // if (mediaRecorderRef.current) {
+            console.log('sent');
             mediaRecorderRef.current.stop();
             await stopRecording(
                 { 
@@ -446,7 +448,7 @@ const Template = () => {
                     onVoiceStart: () => {
                         if(isSystemAudioComplete && audioQueue.current.length === 0) {
                             console.log('Voice started');
-                            // handleStartRecording();
+                            handleStartRecording();
                         }
                     },
                     onVoiceStop: () => {

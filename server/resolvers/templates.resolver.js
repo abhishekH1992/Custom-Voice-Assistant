@@ -22,7 +22,7 @@ const templatesResolver = {
                     let data = await getRedisCached(cacheKey);
                     if(!data) {
                         data = await Template.findAll();
-                        await addRedisCached(cacheKeyActive, data);
+                        await addRedisCached(cacheKey, data);
                     }
                     return data;
                 }
@@ -42,7 +42,7 @@ const templatesResolver = {
                             isActive: true,
                         }
                     });
-                    await addRedisCached(cacheKeyActive, data);
+                    await addRedisCached(cacheKey, data);
                 }
                 return data;
             } catch (error) {
