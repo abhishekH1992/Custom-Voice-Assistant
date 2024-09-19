@@ -1,18 +1,29 @@
 const { Template } = require('../models');
+const { getRedisCached, addRedisCached } = require('../utils/redis.util');
 
 const templatesResolver = {
     Query: {
         templates: async(_, {isActive}) => {
+            const cacheKeyActive = `allTemplates:active`;
+            const cacheKey = `allTemplates:all`;
             try {
                 if(isActive) {
-                    const data = await Template.findAll({
-                        where: {
-                            isActive: true
-                        }
-                    });
+                    let data = await getRedisCached(cacheKeyActive);
+                    if(!data) {
+                        data = await Template.findAll({
+                            where: {
+                                isActive: true
+                            }
+                        });
+                        await addRedisCached(cacheKeyActive, data);
+                    }
                     return data;
                 } else {
-                    const data = await Template.findAll();
+                    let data = await getRedisCached(cacheKey);
+                    if(!data) {
+                        data = await Template.findAll();
+                        await addRedisCached(cacheKeyActive, data);
+                    }
                     return data;
                 }
             } catch (error) {
@@ -21,13 +32,18 @@ const templatesResolver = {
             }
         },
         templateBySlug: async(_, {slug}) => {
+            const cacheKey = `templateBySlug:${slug}`;
             try {
-                const data = await Template.findOne({
-                    where: {
-                        slug: slug,
-                        isActive: true,
-                    }
-                });
+                let data = await getRedisCached(cacheKey);
+                if(!data) {
+                    data = await Template.findOne({
+                        where: {
+                            slug: slug,
+                            isActive: true,
+                        }
+                    });
+                    await addRedisCached(cacheKeyActive, data);
+                }
                 return data;
             } catch (error) {
                 console.error('Error fetching template by id:', error);
