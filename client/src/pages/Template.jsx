@@ -42,6 +42,8 @@ const Template = () => {
     const navigate = useNavigate();
     const vadRef = useRef(null);
     const [isContinuousMode, setIsContinuousMode] = useState(false);
+    const shouldSendAudioRef = useRef(true);
+
 
     const { data, loading } = useQuery(GET_TEMPLATE_BY_SLUG, {
         variables: {
@@ -172,7 +174,7 @@ const Template = () => {
     });
 
     const playNextAudio = useCallback(() => {
-        if (audioQueue.current.length > 0) {
+        if (audioQueue.current.length > 0 && !isUserInitiatedStop) {
             isPlayingAudio.current = true;
             const audioContent = audioQueue.current.shift();
             const audioChunk = base64ToArrayBuffer(audioContent);
@@ -232,7 +234,6 @@ const Template = () => {
     }, [data?.templateBySlug?.id, sendMessage]);
 
     const handleSendMessage = useCallback((message) => {
-        console.log(messages);
         setMessages(prevMessages => {
             const newMessages = !isEmpty(currentStreamedMessage)
                 ? [...prevMessages, { role: 'system', content: currentStreamedMessage.content }, { role: 'user', content: message }]
@@ -245,36 +246,38 @@ const Template = () => {
         streamedMessageRef.current = '';
         isStreamingRef.current = false;
         setIsTyping(true);
-    }, [currentStreamedMessage, messages, sendMessageToServer]);
+    }, [currentStreamedMessage, sendMessageToServer]);
 
     const handleStartRecording = useCallback(async () => {
         try {
-            console.log(currentStreamedMessage);
-            if(!isEmpty(currentStreamedMessage)) {
-                setMessages(prevMessages => [...prevMessages, { role: currentStreamedMessage.role, content: currentStreamedMessage.content }]);
-            }
-            await startRecording();
-            setIsRecording(true);
-            setCurrentStreamedMessage({});
-            streamedMessageRef.current = '';
-            isStreamingRef.current = false;
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            mediaRecorderRef.current = new MediaRecorder(stream, {
-                mimeType: 'audio/webm',
-            });
-
-            mediaRecorderRef.current.ondataavailable = async (event) => {
-                if (event.data.size > 0) {
-                    const reader = new FileReader();
-                    reader.onload = async () => {
-                        const base64AudioData = reader.result.split(',')[1];
-                        await sendAudioData({ variables: { data: base64AudioData } });
-                    };
-                    reader.readAsDataURL(event.data);
+            // if(!selectedType.isAutomatic || (selectedType.isAutomatic && !isUserInitiatedStop)) {
+                if(!isEmpty(currentStreamedMessage)) {
+                    setMessages(prevMessages => [...prevMessages, { role: currentStreamedMessage.role, content: currentStreamedMessage.content }]);
                 }
-            };
+                await startRecording();
+                setIsRecording(true);
+                setCurrentStreamedMessage({});
+                streamedMessageRef.current = '';
+                isStreamingRef.current = false;
+                shouldSendAudioRef.current = true;
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorderRef.current = new MediaRecorder(stream, {
+                    mimeType: 'audio/webm',
+                });
 
-            mediaRecorderRef.current.start(250);
+                mediaRecorderRef.current.ondataavailable = async (event) => {
+                    if (event.data.size > 0 && shouldSendAudioRef.current) {
+                        const reader = new FileReader();
+                        reader.onload = async () => {
+                            const base64AudioData = reader.result.split(',')[1];
+                            await sendAudioData({ variables: { data: base64AudioData } });
+                        };
+                        reader.readAsDataURL(event.data);
+                    }
+                };
+
+                mediaRecorderRef.current.start(250);
+            // }
         } catch (error) {
             console.error('Error starting recording:', error);
         }
@@ -289,6 +292,7 @@ const Template = () => {
 
     const handleStopRecording = useCallback(async(isUserInitiated = false) => {
         setIsRecording(false);
+        shouldSendAudioRef.current = false;
         if(selectedType?.isContinous && isUserInitiated) {
             stopVoiceActivityDetection();
             setIsContinuousMode(false);
@@ -322,6 +326,10 @@ const Template = () => {
             setIsSystemAudioComplete(true);
             if (isCallActive) {
                 setIsCallActive(false);
+            }
+            if (mediaRecorderRef.current) {
+                mediaRecorderRef.current.stop();
+                mediaRecorderRef.current = null;
             }
         }
     }, [selectedType?.isContinous, selectedType?.isAutomatic, stopVoiceActivityDetection, stopRecording, data?.templateBySlug?.id, messages, isCallActive]);
@@ -436,10 +444,9 @@ const Template = () => {
 
                 vadRef.current = vad(audioContext, stream, {
                     onVoiceStart: () => {
-                        console.log(isSystemAudioComplete);
-                        if(isSystemAudioComplete) {
+                        if(isSystemAudioComplete && audioQueue.current.length === 0) {
                             console.log('Voice started');
-                            handleStartRecording();
+                            // handleStartRecording();
                         }
                     },
                     onVoiceStop: () => {
