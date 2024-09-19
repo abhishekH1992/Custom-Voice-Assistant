@@ -124,11 +124,6 @@ const Template = () => {
                     content: streamedMessageRef.current
                 });
                 isStreamingRef.current = true;
-            } else if (isStreamingRef.current) {
-                if(!isEmpty(streamedMessageRef)) setMessages(prev => [...prev, { role: 'system', content: streamedMessageRef.current }]);
-                setCurrentStreamedMessage('');
-                streamedMessageRef.current = '';
-                isStreamingRef.current = false;
             }
         }
     });
@@ -293,9 +288,8 @@ const Template = () => {
             setIsContinuousMode(false);
         }
         setIsUserInitiatedStop(isUserInitiated);
-        if (mediaRecorderRef.current) {
+        if (mediaRecorderRef.current && !isUserInitiated) {
             mediaRecorderRef.current.stop();
-            if(selectedType?.isContinous && !isEmpty(currentStreamedMessage)) setMessages(prevMessages => [...prevMessages, { role: currentStreamedMessage.role, content: currentStreamedMessage.content }]);
             await stopRecording(
                 { 
                     variables: {
@@ -324,7 +318,7 @@ const Template = () => {
                 setIsCallActive(false);
             }
         }
-    }, [selectedType?.isContinous, selectedType?.isAutomatic, stopVoiceActivityDetection, currentStreamedMessage, stopRecording, data?.templateBySlug?.id, messages, isCallActive]);
+    }, [selectedType?.isContinous, selectedType?.isAutomatic, stopVoiceActivityDetection, stopRecording, data?.templateBySlug?.id, messages, isCallActive]);
 
     useEffect(() => {
         let recordingTimer;
