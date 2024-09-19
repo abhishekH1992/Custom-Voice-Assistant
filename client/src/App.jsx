@@ -29,11 +29,15 @@ function App() {
     const location = useLocation();
     const isTemplatePage = location.pathname.startsWith('/template/');
     const isAuthPage = location.pathname === '/login' || location.pathname === '/register';
+    const { loading, error, data: userData } = useQuery(ME_QUERY);
+
+    if (loading) return <div>Loading...</div>;
+    if (error && !isAuthPage) return <Navigate to="/login" />;
 
     return (
         <div className="flex h-screen overflow-y-hidden scrollbar-hide">
             {!isAuthPage && (
-                <SideNav>
+                <SideNav userData={userData}>
                     <SidebarItem icon={<AudioLines size={20} />} text="Voice Chat" to="/" active/>
                     <SidebarItem icon={<SaveAllIcon size={20} />} text="Saved Chat" to="/saved-chats" />
                 </SideNav>
