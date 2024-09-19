@@ -7,15 +7,17 @@ const { WebSocketServer } = require('ws');
 const { useServer } = require('graphql-ws/lib/use/ws');
 const { makeExecutableSchema } = require('@graphql-tools/schema');
 const cors = require('cors');
-const mergedTypeDef = require('./typeDefs/index.js');
-const mergedResolver = require('./resolvers/index.js');
+const path = require('path');
 const session = require('express-session');
 const authMiddleware = require('./middleware/auth.js');
 const dotenv = require('dotenv');
 const jwt = require('jsonwebtoken');
 const { User } = require('./models');
+const mergedTypeDef = require('./typeDefs/index.js');
+const mergedResolver = require('./resolvers/index.js');
 
 dotenv.config();
+
 const app = express();
 const httpServer = http.createServer(app);
 const PORT = process.env.PORT || 5000;
@@ -25,21 +27,27 @@ const schema = makeExecutableSchema({
     resolvers: mergedResolver,
 });
 
+// Session middleware
 app.use(session({
     secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
-    cookie: { secure: process.env.NODE_ENV === 'production' }
+    cookie: { 
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict'
+    }
 }));
 
 app.use(authMiddleware);
+
+// Serve static files from the React app
+app.use(express.static(path.join(__dirname, '../client/build')));
 
 // Authentication function
 const authenticate = async (token) => {
     if (!token) return null;
     try {
         const decoded = jwt.verify(token.replace('Bearer ', ''), process.env.JWT_SECRET);
-        // Fetch the user from the database
         const user = await User.findByPk(decoded.userId);
         return user;
     } catch (err) {
@@ -57,7 +65,6 @@ async function startApolloServer() {
     const serverCleanup = useServer({
         schema,
         context: async (ctx) => {
-            // Authenticate WebSocket connection
             const token = ctx.connectionParams?.authorization || '';
             const user = await authenticate(token);
             return { user };
@@ -85,13 +92,14 @@ async function startApolloServer() {
     app.use(
         '/graphql',
         cors({
-            origin: 'http://localhost:3000',
+            origin: process.env.NODE_ENV === 'production' 
+                ? 'https://convo.akoplus.co.nz' 
+                : 'http://localhost:3000',
             credentials: true,
         }),
         express.json(),
         expressMiddleware(server, {
             context: async ({ req }) => {
-                // Authenticate HTTP request
                 const token = req.headers.authorization || '';
                 const user = await authenticate(token);
                 return { user };
@@ -99,9 +107,14 @@ async function startApolloServer() {
         })
     );
 
+    // Handle any requests that don't match the ones above
+    app.get('*', (req, res) => {
+        res.sendFile(path.join(__dirname, '../client/build/index.html'));
+    });
+
     await new Promise((resolve) => httpServer.listen({ port: PORT }, resolve));
-    console.log(`🚀 Server ready at http://localhost:${PORT}/graphql`);
-    console.log(`🚀 Subscriptions ready at ws://localhost:${PORT}/graphql`);
+    console.log(`🚀 Server ready at https://convo.akoplus.co.nz/graphql`);
+    console.log(`🚀 Subscriptions ready at wss://convo.akoplus.co.nz/graphql`);
 }
 
 startApolloServer();

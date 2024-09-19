@@ -15,6 +15,17 @@ const root = ReactDOM.createRoot(
     document.getElementById('root')
 );
 
+// Determine if we're in production
+const isProduction = process.env.NODE_ENV === 'production';
+
+// Set up the backend URLs
+const httpUri = isProduction 
+    ? 'https://convo.akoplus.co.nz/graphql'
+    : 'http://localhost:5000/graphql';
+const wsUri = isProduction
+    ? 'wss://convo.akoplus.co.nz/graphql'
+    : 'ws://localhost:5000/graphql';
+
 // Create an auth link that adds the token to the headers
 const authLink = setContext((_, { headers }) => {
   const token = localStorage.getItem('token');
@@ -27,14 +38,14 @@ const authLink = setContext((_, { headers }) => {
 });
 
 const httpLink = new HttpLink({
-    uri: 'http://localhost:5000/graphql'
+    uri: httpUri
 });
 
 // Combine the auth link with the http link
 const httpAuthLink = authLink.concat(httpLink);
 
 const wsLink = new GraphQLWsLink(createClient({
-    url: 'ws://localhost:5000/graphql',
+    url: wsUri,
     connectionParams: () => {
         const token = localStorage.getItem('token');
         return {
