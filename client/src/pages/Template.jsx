@@ -41,6 +41,7 @@ const Template = () => {
     const [chatName, setChatName] = useState();
     const navigate = useNavigate();
     const vadRef = useRef(null);
+    const [isContinuousMode, setIsContinuousMode] = useState(false);
 
     const { data, loading } = useQuery(GET_TEMPLATE_BY_SLUG, {
         variables: {
@@ -75,7 +76,7 @@ const Template = () => {
             setMessages(transformedChats);
             setChatName(name || data?.templateBySlug?.aiRole);
         }
-    }, [savedChat]);
+    }, [data?.templateBySlug?.aiRole, savedChat]);
 
     const handleOpenModal = () => {
         setIsModalOpen(true);
@@ -248,11 +249,11 @@ const Template = () => {
 
     const handleStartRecording = useCallback(async () => {
         try {
+            setIsRecording(true);
             if(!isEmpty(currentStreamedMessage)) {
                 setMessages(prevMessages => [...prevMessages, { role: currentStreamedMessage.role, content: currentStreamedMessage.content }]);
             }
             await startRecording();
-            setIsRecording(true);
             setCurrentStreamedMessage({});
             streamedMessageRef.current = '';
             isStreamingRef.current = false;
@@ -278,17 +279,23 @@ const Template = () => {
         }
     }, [currentStreamedMessage, startRecording, sendAudioData]);
 
-    const handleStopRecording = useCallback(async (isUserInitiated = false) => {
-        setIsRecording(false);
-        if(isUserInitiated) {
-            setIsRecording(false);
+    const stopVoiceActivityDetection = useCallback(() => {
+        if (vadRef.current) {
+            vadRef.current.disconnect();
+            vadRef.current = null;
         }
-        if (selectedType.isContinuous) {
+    }, []);
+
+    const handleStopRecording = useCallback(async(isUserInitiated = false) => {
+        setIsRecording(false);
+        if(selectedType?.isContinous && isUserInitiated) {
             stopVoiceActivityDetection();
+            setIsContinuousMode(false);
         }
         setIsUserInitiatedStop(isUserInitiated);
         if (mediaRecorderRef.current) {
             mediaRecorderRef.current.stop();
+            if(selectedType?.isContinous && !isEmpty(currentStreamedMessage)) setMessages(prevMessages => [...prevMessages, { role: currentStreamedMessage.role, content: currentStreamedMessage.content }]);
             await stopRecording(
                 { 
                     variables: {
@@ -299,7 +306,7 @@ const Template = () => {
             );
             setIsTyping(true);
         }
-        if (isUserInitiated && selectedType.isAutomatic) {
+        if (isUserInitiated && (selectedType?.isAutomatic || selectedType?.isContinous)) {
             setIsTyping(false);
             if (isStreamingRef.current) {
                 isStreamingRef.current = false;
@@ -317,7 +324,7 @@ const Template = () => {
                 setIsCallActive(false);
             }
         }
-    }, [selectedType, stopRecording, data?.templateBySlug?.id, messages, isCallActive]);
+    }, [selectedType?.isContinous, selectedType?.isAutomatic, stopVoiceActivityDetection, currentStreamedMessage, stopRecording, data?.templateBySlug?.id, messages, isCallActive]);
 
     useEffect(() => {
         let recordingTimer;
@@ -421,7 +428,7 @@ const Template = () => {
 
     const startVoiceActivityDetection = useCallback(() => {
         if (vadRef.current) return;
-
+        setIsRecording(true);
         navigator.mediaDevices.getUserMedia({ audio: true })
             .then(stream => {
                 const audioContext = new AudioContext();
@@ -445,13 +452,6 @@ const Template = () => {
             .catch(err => console.error('Error accessing microphone:', err));
     }, [handleStartRecording, handleStopRecording]);
 
-    const stopVoiceActivityDetection = useCallback(() => {
-        if (vadRef.current) {
-            vadRef.current.disconnect();
-            vadRef.current = null;
-        }
-    }, []);
-
     useEffect(() => {
         return () => {
             stopVoiceActivityDetection();
@@ -468,6 +468,7 @@ const Template = () => {
             setIsCallActive(true);
             setIsSystemAudioComplete(false);
             setIsUserInitiatedStop(false);
+            setIsContinuousMode(true);
             startVoiceActivityDetection();
         }else {
             handleStartRecording();
@@ -509,6 +510,7 @@ const Template = () => {
                     onDeleteChat={onDeleteChat}
                     savedChatId={savedChatId}
                     onFeedback={onFeedback}
+                    isContinuousMode={isContinuousMode}
                 />
                 <TypeSettingsModal
                     isOpen={isModalOpen}

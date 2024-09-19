@@ -45,7 +45,6 @@ const conversationResolver = {
             const audioBuffer = Buffer.concat(audioChunks);
             const fileName = `audio_${Date.now()}.wav`;
             const filePath = path.join(__dirname, '..', 'temp', fileName);
-            
             fs.writeFileSync(filePath, audioBuffer);
         
             try {
