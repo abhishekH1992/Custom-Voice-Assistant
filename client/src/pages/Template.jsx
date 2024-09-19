@@ -243,6 +243,7 @@ const Template = () => {
     }, [currentStreamedMessage, messages, sendMessageToServer]);
 
     const handleStartRecording = useCallback(async () => {
+        console.log('handleStartRecording');
         try {
             setIsRecording(true);
             if(!isEmpty(currentStreamedMessage)) {

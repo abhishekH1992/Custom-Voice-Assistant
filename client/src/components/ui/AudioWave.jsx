@@ -1,17 +1,16 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Mic, Phone } from 'lucide-react';
 
 const CallControlPanel = ({ onStartRecording, onStopRecording, isRecording, isContinuousMode }) => {
     const [buttonText, setButtonText] = useState('Start Call');
-
-    useEffect(() => {
-        setButtonText(isRecording || isContinuousMode ? 'End Call' : 'Start Call');
-    }, [isRecording, isContinuousMode]);
+    
 
     const toggleRecording = () => {
         if (isRecording || isContinuousMode) {
             onStopRecording();
+            setButtonText('Start Call');
         } else {
+            setButtonText('End Call');
             onStartRecording();
         }
     };
