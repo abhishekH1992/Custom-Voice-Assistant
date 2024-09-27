@@ -14,15 +14,23 @@ import Feedback from './pages/Feedback';
 
 const ProtectedRoute = ({ children }) => {
     const { loading, error, data } = useQuery(ME_QUERY);
-  
     if (loading) return <div>Loading...</div>;
     if (error) {
-        console.error('Authentication error:', error);
         localStorage.removeItem('token');
         return <Navigate to="/login" />;
     }
     
     return React.cloneElement(children, { userData: data });
+}
+
+const AuthRoute = ({ children }) => {
+    const { loading, error, data } = useQuery(ME_QUERY);
+    if (loading) return <div>Loading...</div>;
+    if (!error && data) {
+        // User is authenticated, redirect to home
+        return <Navigate to="/" replace />;
+    }
+    return children;
 }
 
 function App() {
@@ -45,8 +53,16 @@ function App() {
             <main className={`flex-1 flex flex-col ${isAuthPage ? 'w-full' : ''}`}>
                 <div className={`flex-1 ${isTemplatePage ? '' : 'overflow-y-auto scrollbar-hide'}`}>
                     <Routes>
-                        <Route path='/login' element={<Login />} />
-                        <Route path='/register' element={<Register />} />
+                        <Route path='/login' element={
+                            <AuthRoute>
+                                <Login />
+                            </AuthRoute>
+                        } />
+                        <Route path='/register' element={
+                            <AuthRoute>
+                                <Register />
+                            </AuthRoute>
+                        } />
                         <Route path='/' element={
                             <ProtectedRoute>
                                 <TemplateList />

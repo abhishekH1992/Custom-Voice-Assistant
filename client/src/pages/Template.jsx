@@ -116,6 +116,7 @@ const Template = () => {
         variables: { templateId: data?.templateBySlug?.id },
         onSubscriptionData: ({ subscriptionData }) => {
             const { role, content: newContent } = subscriptionData?.data?.messageStreamed;
+            console.log(newContent);
             if (newContent !== undefined) {
                 if (streamedMessageRef.current === '') {
                     setIsTyping(false);
@@ -251,12 +252,13 @@ const Template = () => {
     const handleStartRecording = useCallback(async () => {
         try {
             // if(!selectedType.isAutomatic || (selectedType.isAutomatic && !isUserInitiatedStop)) {
+                console.log(currentStreamedMessage);
                 if(!isEmpty(currentStreamedMessage)) {
                     setMessages(prevMessages => [...prevMessages, { role: currentStreamedMessage.role, content: currentStreamedMessage.content }]);
                 }
                 await startRecording();
                 setIsRecording(true);
-                setCurrentStreamedMessage({});
+                // setCurrentStreamedMessage({});
                 streamedMessageRef.current = '';
                 isStreamingRef.current = false;
                 shouldSendAudioRef.current = true;
@@ -316,7 +318,7 @@ const Template = () => {
             setIsTyping(false);
             if (isStreamingRef.current) {
                 isStreamingRef.current = false;
-                setCurrentStreamedMessage({});
+                // setCurrentStreamedMessage({});
                 streamedMessageRef.current = '';
             }
             audioQueue.current = [];
