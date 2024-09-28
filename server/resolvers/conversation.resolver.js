@@ -9,6 +9,9 @@ const { getRedisCached, addRedisCached } = require('../utils/redis.util');
 const pubsub = new PubSub();
 let audioChunks = [];
 
+// Map to store active streams for each template
+const activeStreams = new Map();
+
 const conversationResolver = {
     Mutation: {
         sendMessage: async(_, { templateId, messages }) => {
@@ -48,24 +51,34 @@ const conversationResolver = {
             return true;
         },
         stopRecording: async (_, { templateId, messages }) => {
+            // Stop any existing stream for this template
+            if (activeStreams.has(templateId)) {
+                activeStreams.get(templateId).abort();
+                activeStreams.delete(templateId);
+            }
+
             const audioBuffer = Buffer.concat(audioChunks);
             const fileName = `audio_${Date.now()}.wav`;
             const filePath = path.join(__dirname, '..', 'temp', fileName);
             fs.writeFileSync(filePath, audioBuffer);
             const cacheKey = `template:${templateId}`;
-        
+            let transcriptionSuccess = true;
             try {
-                const transcriptionStream = await transcribeAudio(filePath);
                 let fullTranscription = '';
-                for await (const part of transcriptionStream) {
-                    const transcriptionPart = part || '';
-                    fullTranscription += transcriptionPart;
+                try {
+                    const transcriptionStream = await transcribeAudio(filePath);
+                    for await (const part of transcriptionStream) {
+                        const transcriptionPart = part || '';
+                        fullTranscription += transcriptionPart;
+                    }
+                    pubsub.publish('USER_STREAMED', { 
+                        userStreamed: { content: fullTranscription },
+                        templateId
+                    });
+                    transcriptionSuccess = true;
+                } catch(error) {
+                    transcriptionSuccess = false;
                 }
-                pubsub.publish('USER_STREAMED', { 
-                    userStreamed: { content: fullTranscription },
-                    templateId
-                });
-
                 fs.unlinkSync(filePath);
 
                 let template = await getRedisCached(cacheKey);
@@ -78,25 +91,38 @@ const conversationResolver = {
                     [
                         { 'role': 'system', content: template.prompt },
                         ...messages,
-                        { 'role': 'user', content: fullTranscription }
+                        { 'role': transcriptionSuccess ? 'user' : 'system', content: transcriptionSuccess ? fullTranscription : 'Ask to repeat it. System couldnt heard what user said.' }
                     ],
                     true
                 );
 
-                const combinedStreamInstance = combinedStream(stream, templateId);
-                for await (const part of combinedStreamInstance) {
-                    if (part.messageStreamed) {
-                        pubsub.publish('MESSAGE_STREAMED', {
-                            messageStreamed: part.messageStreamed,
-                            templateId 
-                        });
-                    } 
-                    else if (part.audioStreamed) {
-                        pubsub.publish('AUDIO_STREAMED', {
-                            audioStreamed: part.audioStreamed,
-                            templateId
-                        });
+                const abortController = new AbortController();
+                activeStreams.set(templateId, abortController);
+
+                const combinedStreamInstance = combinedStream(stream, templateId, abortController.signal);
+                try {
+                    for await (const part of combinedStreamInstance) {
+                        if (part.messageStreamed) {
+                            pubsub.publish('MESSAGE_STREAMED', {
+                                messageStreamed: part.messageStreamed,
+                                templateId 
+                            });
+                        } 
+                        else if (part.audioStreamed) {
+                            pubsub.publish('AUDIO_STREAMED', {
+                                audioStreamed: part.audioStreamed,
+                                templateId
+                            });
+                        }
                     }
+                } catch (error) {
+                    if (error.name === 'AbortError') {
+                        console.log(`Stream for template ${templateId} was aborted`);
+                    } else {
+                        throw error;
+                    }
+                } finally {
+                    activeStreams.delete(templateId);
                 }
         
                 return true;
@@ -109,6 +135,17 @@ const conversationResolver = {
             const audioData = Buffer.from(data, 'base64');
             audioChunks.push(audioData);
             return true;
+        },
+        stopStreaming: async (_, { templateId }) => {
+            if (activeStreams.has(templateId)) {
+                activeStreams.get(templateId).abort();
+                activeStreams.delete(templateId);
+                pubsub.publish('STREAM_STOPPED', {
+                    streamStopped: { templateId },
+                });
+                return true;
+            }
+            return false;
         },
     },
     Subscription: {
@@ -138,6 +175,10 @@ const conversationResolver = {
                 }
                 return null;
             },
+        },
+        streamStopped: {
+            subscribe: () => pubsub.asyncIterator(['STREAM_STOPPED']),
+            resolve: (payload) => payload.streamStopped,
         },
     },
 };

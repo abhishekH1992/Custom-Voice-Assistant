@@ -2,6 +2,7 @@ const { openai, audioStreamChunkSize } = require('./openai.util');
 const fs = require('fs');
 
 const textCompletion = async(model, messages, stream = false) => {
+    console.log(messages);
     const response =  await openai.chat.completions.create({
         model: model,
         messages: messages,

@@ -23,3 +23,9 @@ export const SEND_AUDIO_DATA = gql`
         sendAudioData(data: $data)
     }
 `;
+
+export const STOP_STREAMING = gql`
+    mutation StopStreaming($templateId: ID!) {
+        stopStreaming(templateId: $templateId)
+    }
+`;

@@ -6,8 +6,8 @@ import { GET_TEMPLATE_BY_SLUG } from '../graphql/queries/templates.query';
 import { GET_ENABLE_TYPES } from '../graphql/queries/types.query';
 import ChatMessage from '../components/ui/ChatMessage';
 import ChatBottom from '../components/ui/ChatBottom';
-import { MESSAGE_SUBSCRIPTION, AUDIO_SUBSCRIPTION, USER_SUBSCRIPTION } from '../graphql/subscriptions/conversation.subscription';
-import { SEND_MESSAGE, START_RECORDING, STOP_RECORDING, SEND_AUDIO_DATA } from '../graphql/mutations/conversation.mutation';
+import { MESSAGE_SUBSCRIPTION, AUDIO_SUBSCRIPTION, USER_SUBSCRIPTION, STREAM_STOPPED_SUBSCRIPTION } from '../graphql/subscriptions/conversation.subscription';
+import { SEND_MESSAGE, START_RECORDING, STOP_RECORDING, SEND_AUDIO_DATA, STOP_STREAMING } from '../graphql/mutations/conversation.mutation';
 import TypeSettingsModal from '../components/ui/TypeSettingsModal';
 import { SAVE_CHAT, DELETE_CHAT } from '../graphql/mutations/chat.mutation';
 import SaveChatModal from '../components/ui/SaveChatModal';
@@ -43,6 +43,7 @@ const Template = () => {
     const vadRef = useRef(null);
     const [isContinuousMode, setIsContinuousMode] = useState(false);
     const shouldSendAudioRef = useRef(true);
+    const messagesRef = useRef([]);
 
 
     const { data, loading } = useQuery(GET_TEMPLATE_BY_SLUG, {
@@ -98,6 +99,7 @@ const Template = () => {
     const [startRecording] = useMutation(START_RECORDING);
     const [stopRecording] = useMutation(STOP_RECORDING);
     const [sendAudioData] = useMutation(SEND_AUDIO_DATA);
+    const [stopStreaming] = useMutation(STOP_STREAMING);
 
     const [saveChat] = useMutation(SAVE_CHAT);
     const [deleteChat] = useMutation(DELETE_CHAT);
@@ -116,7 +118,6 @@ const Template = () => {
         variables: { templateId: data?.templateBySlug?.id },
         onSubscriptionData: ({ subscriptionData }) => {
             const { role, content: newContent } = subscriptionData?.data?.messageStreamed;
-            console.log(newContent);
             if (newContent !== undefined) {
                 if (streamedMessageRef.current === '') {
                     setIsTyping(false);
@@ -174,13 +175,22 @@ const Template = () => {
         }
     });
 
+    useSubscription(STREAM_STOPPED_SUBSCRIPTION, {
+        variables: { templateId: data?.templateBySlug?.id },
+        onSubscriptionData: ({ subscriptionData }) => {
+            const { templateId } = subscriptionData?.data?.streamStopped;
+            if (templateId === data?.templateBySlug?.id) {
+                handleStreamStopped();
+            }
+        }
+    });
+
     const playNextAudio = useCallback(() => {
-        if (audioQueue.current.length > 0 && !isUserInitiatedStop) {
+        if ((audioQueue.current.length > 0 && !selectedType?.isAutomatic && !selectedType?.isContinous) || (audioQueue.current.length > 0 && !isUserInitiatedStop && (selectedType?.isAutomatic || selectedType?.isContinous))) {
             isPlayingAudio.current = true;
             const audioContent = audioQueue.current.shift();
             const audioChunk = base64ToArrayBuffer(audioContent);
             const audioFormats = ['audio/mpeg', 'audio/mp4', 'audio/webm', 'audio/ogg'];
-
             const attemptPlay = (formatIndex) => {
                 if (formatIndex >= audioFormats.length) {
                     console.error("Failed to play audio with all known formats");
@@ -209,7 +219,7 @@ const Template = () => {
             setIsSystemAudioComplete(true);
             isPlayingAudio.current = false;
         }
-    }, []);
+    }, [isUserInitiatedStop, selectedType]);
 
     const base64ToArrayBuffer = (base64) => {
         const binaryString = window.atob(base64);
@@ -251,35 +261,36 @@ const Template = () => {
 
     const handleStartRecording = useCallback(async () => {
         try {
-            // if(!selectedType.isAutomatic || (selectedType.isAutomatic && !isUserInitiatedStop)) {
-                console.log(currentStreamedMessage);
-                if(!isEmpty(currentStreamedMessage)) {
-                    setMessages(prevMessages => [...prevMessages, { role: currentStreamedMessage.role, content: currentStreamedMessage.content }]);
-                }
-                await startRecording();
-                setIsRecording(true);
-                // setCurrentStreamedMessage({});
-                streamedMessageRef.current = '';
-                isStreamingRef.current = false;
-                shouldSendAudioRef.current = true;
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                mediaRecorderRef.current = new MediaRecorder(stream, {
-                    mimeType: 'audio/webm',
+            if (!isEmpty(currentStreamedMessage) || streamedMessageRef.current !== '') {
+                setMessages(prevMessages => {
+                    const newMessages = [...prevMessages, { role: currentStreamedMessage.role || 'system', content: currentStreamedMessage.content || streamedMessageRef.current }];
+                    messagesRef.current = newMessages;
+                    return newMessages;
                 });
+            }
+            await startRecording();
+            setIsRecording(true);
+            setCurrentStreamedMessage({});
+            streamedMessageRef.current = '';
+            isStreamingRef.current = false;
+            shouldSendAudioRef.current = true;
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mediaRecorderRef.current = new MediaRecorder(stream, {
+                mimeType: 'audio/webm',
+            });
 
-                mediaRecorderRef.current.ondataavailable = async (event) => {
-                    if (event.data.size > 0 && shouldSendAudioRef.current) {
-                        const reader = new FileReader();
-                        reader.onload = async () => {
-                            const base64AudioData = reader.result.split(',')[1];
-                            await sendAudioData({ variables: { data: base64AudioData } });
-                        };
-                        reader.readAsDataURL(event.data);
-                    }
-                };
+            mediaRecorderRef.current.ondataavailable = async (event) => {
+                if (event.data.size > 0 && shouldSendAudioRef.current) {
+                    const reader = new FileReader();
+                    reader.onload = async () => {
+                        const base64AudioData = reader.result.split(',')[1];
+                        await sendAudioData({ variables: { data: base64AudioData } });
+                    };
+                    reader.readAsDataURL(event.data);
+                }
+            };
 
-                mediaRecorderRef.current.start(250);
-            // }
+            mediaRecorderRef.current.start(250);
         } catch (error) {
             console.error('Error starting recording:', error);
         }
@@ -292,6 +303,41 @@ const Template = () => {
         }
     }, []);
 
+    useEffect(() => {
+        if (messages.length > 0) {
+            messagesRef.current = messages;
+        }
+    }, [messages]);
+
+    const handleStreamStopped = useCallback(() => {
+        setIsRecording(false);
+        setIsTyping(false);
+        setIsCallActive(false);
+        setIsContinuousMode(false);
+        setIsUserInitiatedStop(true);
+        setIsSystemAudioComplete(true);
+        
+        if (isStreamingRef.current) {
+            isStreamingRef.current = false;
+            setCurrentStreamedMessage({});
+            streamedMessageRef.current = '';
+        }
+
+        audioQueue.current = [];
+        if (audioRef.current) {
+            audioRef.current.pause();
+            audioRef.current.src = '';
+        }
+        isPlayingAudio.current = false;
+
+        if (mediaRecorderRef.current) {
+            mediaRecorderRef.current.stop();
+            mediaRecorderRef.current = null;
+        }
+
+        stopVoiceActivityDetection();
+    }, [stopVoiceActivityDetection]);
+
     const handleStopRecording = useCallback(async(isUserInitiated = false) => {
         setIsRecording(false);
         shouldSendAudioRef.current = false;
@@ -300,25 +346,24 @@ const Template = () => {
             setIsContinuousMode(false);
         }
         setIsUserInitiatedStop(isUserInitiated);
-        if ((mediaRecorderRef.current && !selectedType.isAutomatic && !selectedType.isContinous) || (mediaRecorderRef.current && !isUserInitiated && (selectedType.isAutomatic || selectedType.isContinous))) {
-            // if (mediaRecorderRef.current) {
-            console.log('sent');
+        if ((mediaRecorderRef.current && !selectedType.isAutomatic && !selectedType.isContinous) || (mediaRecorderRef.current && !isUserInitiated && (selectedType?.isAutomatic || selectedType?.isContinous))) {
             mediaRecorderRef.current.stop();
             await stopRecording(
                 { 
                     variables: {
                         templateId: data?.templateBySlug?.id,
-                        messages: messages
+                        messages: messagesRef.current
                     }
                 }
             );
             setIsTyping(true);
         }
         if (isUserInitiated && (selectedType?.isAutomatic || selectedType?.isContinous)) {
+            handleStreamStopped();
             setIsTyping(false);
             if (isStreamingRef.current) {
                 isStreamingRef.current = false;
-                // setCurrentStreamedMessage({});
+                setCurrentStreamedMessage({});
                 streamedMessageRef.current = '';
             }
             audioQueue.current = [];
@@ -336,7 +381,7 @@ const Template = () => {
                 mediaRecorderRef.current = null;
             }
         }
-    }, [selectedType?.isContinous, selectedType?.isAutomatic, stopVoiceActivityDetection, stopRecording, data?.templateBySlug?.id, messages, isCallActive]);
+    }, [selectedType, stopVoiceActivityDetection, stopRecording, data?.templateBySlug?.id, isCallActive, handleStreamStopped]);
 
     useEffect(() => {
         let recordingTimer;
@@ -448,13 +493,22 @@ const Template = () => {
 
                 vadRef.current = vad(audioContext, stream, {
                     onVoiceStart: () => {
-                        if(isSystemAudioComplete && audioQueue.current.length === 0) {
-                            console.log('Voice started');
-                            handleStartRecording();
+                        audioQueue.current = [];
+                        if (audioRef.current) {
+                            audioRef.current.pause();
+                            audioRef.current.src = '';
                         }
+                        if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
+                            mediaRecorderRef.current.stop();
+                        }
+                        isPlayingAudio.current = false;
+                        setIsSystemAudioComplete(true);
+                        setIsCallActive(true);
+                        setIsSystemAudioComplete(false);
+                        setIsUserInitiatedStop(false);
+                        handleStartRecording();
                     },
                     onVoiceStop: () => {
-                        console.log('Voice stopped');
                         setIsCallActive(false);
                         handleStopRecording(false);
                     },
@@ -464,13 +518,26 @@ const Template = () => {
                 });
             })
             .catch(err => console.error('Error accessing microphone:', err));
-    }, [handleStartRecording, handleStopRecording, isSystemAudioComplete]);
+    }, [handleStartRecording, handleStopRecording]);
 
     useEffect(() => {
         return () => {
             stopVoiceActivityDetection();
         };
     }, [stopVoiceActivityDetection]);
+
+    const handleStopStreaming = useCallback(async () => {
+        try {
+            await stopStreaming({
+                variables: {
+                    templateId: data?.templateBySlug?.id
+                }
+            });
+            handleStreamStopped();
+        } catch (error) {
+            console.error('Error stopping stream:', error);
+        }
+    }, [data?.templateBySlug?.id, stopStreaming, handleStreamStopped]);
 
     const handleStartCall = useCallback(async() => {
         if(selectedType.isAutomatic) {
@@ -479,6 +546,7 @@ const Template = () => {
             setIsUserInitiatedStop(false);
             handleStartRecording();
         } else if(selectedType.isContinous) {
+            await handleStopStreaming();
             setIsCallActive(true);
             setIsSystemAudioComplete(false);
             setIsUserInitiatedStop(false);
@@ -487,7 +555,7 @@ const Template = () => {
         }else {
             handleStartRecording();
         }
-    }, [handleStartRecording, selectedType, startVoiceActivityDetection]);
+    }, [handleStartRecording, handleStopStreaming, selectedType, startVoiceActivityDetection]);
 
     if (loading || typeLoading || savedChatLoading) return <div className="flex items-center justify-center h-screen">Loading...</div>;
 
