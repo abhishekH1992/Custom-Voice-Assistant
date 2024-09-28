@@ -151,6 +151,8 @@ const Template = () => {
                 startAutoRecording();
             }
         };
+        utterance.pitch = 0.8;
+        utterance.rate = 0.9;
         speechSynthesisRef.current.speak(utterance);
     }, [selectedType, startAutoRecording]);
 

@@ -52,43 +52,51 @@ export const useSpeechToText = (templateId, streamingMessage, setStreamingMessag
         if (browserSupportsSpeechRecognition) {
             console.log(selectedType.isAutomatic || selectedType.isContinous);
             try {
-                SpeechRecognition.startListening({ continuous: selectedType.isAutomatic || selectedType.isContinous  });
-                setIsListening(true);
-                resetTranscript();
-                console.log('Started listening');
+                SpeechRecognition.startListening({ continuous: selectedType.isAutomatic || selectedType.isContinous  })
+                .then(() => {
+                    setIsListening(true);
+                    // resetTranscript();
+                    console.log('Started listening');
+                })
+                .catch((error) => {
+                    console.error('Error starting speech recognition:', error);
+                    toast.error('Failed to start speech recognition. Please try again.');
+                });
             } catch (error) {
                 console.error('Error starting speech recognition:', error);
                 toast.error(`Error starting speech recognition: ${error.message}`);
             }
         }
-    }, [browserSupportsSpeechRecognition, resetTranscript, selectedType]);
+    }, [browserSupportsSpeechRecognition, selectedType]);
 
     const onStopRecording = useCallback(() => {
         SpeechRecognition.stopListening();
         console.log('Stopping recording. Final transcript:', transcript);
-        if (transcript) {
-            setIsThinking(true);
-            setIsListening(false);
-            setMessages(prevMessages => {
-                let newMessages = [...prevMessages];
-                if (!isEmpty(userStreamingMessage)) {
-                    newMessages = [...newMessages, { role: 'user', content: userStreamingMessage.content }];
-                }
-                if (!isEmpty(streamingMessage)) {
-                    newMessages = [...newMessages, { role: 'system', content: streamingMessage.content }];
-                }
-                setCurrentTranscript({ messages: newMessages, transcript });
-                setShouldSendAudio(true);
-                
-                return newMessages;
-            });
-            setStreamingMessage({});
-            setUserStreamingMessage({})
-        } else {
-            console.error('No transcript available');
-            toast.error('No speech detected. Please try again.');
-        }
-        resetTranscript();
+        setTimeout(() => {
+            if (transcript) {
+                setIsThinking(true);
+                setIsListening(false);
+                setMessages(prevMessages => {
+                    let newMessages = [...prevMessages];
+                    if (!isEmpty(userStreamingMessage)) {
+                        newMessages = [...newMessages, { role: 'user', content: userStreamingMessage.content }];
+                    }
+                    if (!isEmpty(streamingMessage)) {
+                        newMessages = [...newMessages, { role: 'system', content: streamingMessage.content }];
+                    }
+                    setCurrentTranscript({ messages: newMessages, transcript });
+                    setShouldSendAudio(true);
+                    
+                    return newMessages;
+                });
+                setStreamingMessage({});
+                setUserStreamingMessage({})
+            } else {
+                console.error('No transcript available');
+                toast.error('No speech detected. Please try again.');
+            }
+            resetTranscript();
+        }, 500);
     }, [transcript, resetTranscript, setIsThinking, setMessages, setStreamingMessage, setUserStreamingMessage, isEmpty, userStreamingMessage, streamingMessage]);
 
     return {
