@@ -17,7 +17,10 @@ module.exports = (sequelize, DataTypes) => {
     userId: DataTypes.INTEGER,
     templateId: DataTypes.INTEGER,
     chats: DataTypes.JSONB,
-    name: DataTypes.STRING
+    name: DataTypes.STRING,
+    feedback: DataTypes.JSONB,
+    table: DataTypes.JSONB,
+    feedbackLastGeneratedAt: DataTypes.DATE,
   }, {
     sequelize,
     modelName: 'SavedChats',

@@ -2,7 +2,6 @@ const { openai, audioStreamChunkSize } = require('./openai.util');
 const fs = require('fs');
 
 const textCompletion = async(model, messages, stream = false) => {
-    console.log(messages);
     const response =  await openai.chat.completions.create({
         model: model,
         messages: messages,
@@ -32,7 +31,6 @@ const textToSpeech = async function*(text, voice='alloy') {
         voice: voice,
         input: text,
     });
-  
     yield* response.body;
 };
 
@@ -108,4 +106,112 @@ const combinedStream = async function*(textStream, templateId, abortSignal) {
     }
 }
 
-module.exports = { textCompletion, transcribeAudio, textToSpeech, combinedStream };
+const analyzeTranscription = async (prompt, model, chats) => {
+    try {
+        const userMessages = chats
+            .filter(message => message.role === "user")
+            .map(message => message.content)
+            .join("\n\n");
+
+        const response = await openai.chat.completions.create({
+            model: model,
+            messages: [
+                {
+                    role: "system",
+                    content: "You are an expert in conversation analysis, specifically for sales training scenarios. Analyze the conversation strictly in the context of the given system prompt and user messages. Provide a detailed, accurate analysis using the specified JSON format and keys."
+                },
+                {
+                    role: "user",
+                    content: `Analyze the following conversation in the context of a sales training scenario. Provide a detailed analysis in the exact JSON format specified, using the given keys. Ensure all analyses are relevant to sales training and the system prompt.
+
+                    Required JSON Structure:
+                    {
+                        "accentEmotionAnalysis": {
+                            "accent": string,
+                            "emotion": string
+                        },
+                        "toneSentimentOverview": {
+                            "tone": string,
+                            "sentiment": string
+                        },
+                        "pronunciationAnalysis": {
+                            "accuracy": {
+                                "key": string,
+                                "rate": number
+                            },
+                            "clarity": {
+                                "key": string,
+                                "rate": number
+                            },
+                            "issues": {
+                                "key": string,
+                                "rate": number
+                            }
+                        },
+                        "interactionSpeed": {
+                            "speed": string,
+                            "rate": number
+                            "reflection": string
+                        },
+                        "fillerWordAnalysis": {
+                            "fillerWords": string[],
+                            "count": number
+                        },
+                        "loosingPromptContent": {
+                            "isLosingContent": {
+                                "key": string,
+                                "rate": number
+                            },
+                            "sectionsMissed": string[]
+                        },
+                        "confidenceScore": {
+                            "avgConfidence": number,
+                            "accentEmotionAnalysis": number,
+                            "toneSentimentOverview": number,
+                            "emotionTimeline": number,
+                            "toneSentimentTimeline": number,
+                            "keywordsWithContext": number,
+                            "pronunciationAnalysis": number,
+                            "interactionSpeed": number,
+                            "fillerWordAnalysis": number,
+                            "loosingPromptContent": number
+                            "awareness": number,
+                            "proactive": number
+                        },
+                        "overview": {
+                            "abstractSummary": string,
+                            "keyPoints": string,
+                            "actionItem": string,
+                            "sentiment": string
+                            "awareness": string
+                            "proactive": string
+                        }
+                    }
+
+                    Instructions:
+                    1. Strictly adhere to the JSON structure provided.
+                    2. All analyses must be relevant to sales training and the system prompt.
+                    3. For 'loosingPromptContent', check if the user is deviating from the sales training scenario.
+                    4. All confidence scores must be between 0 and 5, with 5 being the highest confidence.
+                    5. Ensure timestamps in timelines are consistent and relevant to the conversation flow.
+                    6. Keywords should be sales-related terms from the conversation.
+
+                    System Prompt:
+                    ${prompt}
+
+                    User Messages:
+                    ${userMessages}`
+                }
+            ],
+            max_tokens: 1500
+        });
+        const parsedResponse = JSON.parse(response.choices[0].message.content);
+
+        return parsedResponse;
+    } catch (error) {
+        console.error('Error analyzing transcription:', error);
+        throw error;
+    }
+};
+
+module.exports = { textCompletion, transcribeAudio, textToSpeech, combinedStream, analyzeTranscription };

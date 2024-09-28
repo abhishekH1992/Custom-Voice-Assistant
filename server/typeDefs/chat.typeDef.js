@@ -6,6 +6,7 @@ const chatTypeDef = `#graphql
 
     type Query {
         getSavedChatById(savedChatId: ID!, userId:ID!): SavedChat!
+        getSavedChatAndFeedbackById(savedChatId: ID!, userId:ID!): SavedChat!
     }
 
     input SaveChatInput {
@@ -33,11 +34,84 @@ const chatTypeDef = `#graphql
         templateId: ID!
         chats: [ChatMessage!]!
         name: String!
+        feedback: Feedback
     }
 
     type ChatMessage {
         role: String!
         content: String!
+    }
+
+    type Feedback {
+        accentEmotionAnalysis: AccentEmotionAnalysis
+        toneSentimentOverview: ToneSentimentOverview
+        pronunciationAnalysis: PronunciationAnalysis
+        interactionSpeed: InteractionSpeed
+        fillerWordAnalysis: FillerWordAnalysis
+        loosingPromptContent: LoosingPromptContent
+        confidenceScore: ConfidenceScore
+        overview: Overview
+    }
+
+    type AccentEmotionAnalysis {
+        accent: String!
+        emotion: String!
+    }
+
+    type ToneSentimentOverview {
+        tone: String!
+        sentiment: String!
+    }
+
+    type PronunciationAnalysis {
+        accuracy: RatedKey!
+        clarity: RatedKey!
+        issues: RatedKey!
+    }
+
+    type RatedKey {
+        key: String!
+        rate: Float!
+    }
+
+    type InteractionSpeed {
+        speed: String!
+        rate: Float!
+        reflection: String!
+    }
+
+    type FillerWordAnalysis {
+        fillerWords: [String!]!
+        count: Int!
+    }
+
+    type LoosingPromptContent {
+        isLosingContent: RatedKey!
+        sectionsMissed: [String!]!
+    }
+
+    type ConfidenceScore {
+        avgConfidence: Float!
+        accentEmotionAnalysis: Float!
+        toneSentimentOverview: Float!
+        emotionTimeline: Float!
+        toneSentimentTimeline: Float!
+        keywordsWithContext: Float!
+        pronunciationAnalysis: Float!
+        interactionSpeed: Float!
+        fillerWordAnalysis: Float!
+        loosingPromptContent: Float!
+        awareness: Float!
+        proactive: Float!
+    }
+
+    type Overview {
+        abstractSummary: String!
+        keyPoints: String!
+        actionItem: String!
+        sentiment: String!
+        awareness: String!
+        proactive: String!
     }
 `;
 

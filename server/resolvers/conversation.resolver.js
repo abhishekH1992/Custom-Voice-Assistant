@@ -1,6 +1,6 @@
 const { Template } = require('../models');
 const { PubSub } = require('graphql-subscriptions');
-const { textCompletion, transcribeAudio, combinedStream } = require('../utils/conversation.util');
+const { textCompletion, transcribeAudio, combinedStream, analyzeTranscription } = require('../utils/conversation.util');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
@@ -9,7 +9,6 @@ const { getRedisCached, addRedisCached } = require('../utils/redis.util');
 const pubsub = new PubSub();
 let audioChunks = [];
 
-// Map to store active streams for each template
 const activeStreams = new Map();
 
 const conversationResolver = {
@@ -18,7 +17,7 @@ const conversationResolver = {
             const cacheKey = `template:${templateId}`;
             try {
                 let template = await getRedisCached(cacheKey);
-                if(!template) {
+                if(template) {
                     template = await Template.findByPk(templateId);
                     await addRedisCached(cacheKey, template);
                 }
@@ -51,7 +50,6 @@ const conversationResolver = {
             return true;
         },
         stopRecording: async (_, { templateId, messages }) => {
-            // Stop any existing stream for this template
             if (activeStreams.has(templateId)) {
                 activeStreams.get(templateId).abort();
                 activeStreams.delete(templateId);

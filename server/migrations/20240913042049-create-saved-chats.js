@@ -38,6 +38,20 @@ module.exports = {
                 allowNull: false,
                 defaultValue: '[]'
             },
+            feedback: {
+                type: Sequelize.JSON,
+                allowNull: true,
+                defaultValue: '[]'
+            },
+            table: {
+                type: Sequelize.JSON,
+                allowNull: true,
+                defaultValue: '[]'
+            },
+            feedbackLastGeneratedAt: {
+                allowNull: true,
+                type: Sequelize.DATE
+            },
             createdAt: {
                 allowNull: false,
                 type: Sequelize.DATE
