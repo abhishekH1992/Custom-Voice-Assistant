@@ -1,6 +1,6 @@
 const { Template } = require('../models');
 const { PubSub } = require('graphql-subscriptions');
-const { textCompletion, transcribeAudio, combinedStream, analyzeTranscription } = require('../utils/conversation.util');
+const { textCompletion, transcribeAudio, combinedStream } = require('../utils/conversation.util');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');

@@ -54,13 +54,13 @@ const chatTypeDef = `#graphql
     }
 
     type AccentEmotionAnalysis {
-        accent: String!
-        emotion: String!
+        accent: RatedKey!
+        emotion: RatedKey!
     }
 
     type ToneSentimentOverview {
-        tone: String!
-        sentiment: String!
+        tone: RatedKey!
+        sentiment: RatedKey!
     }
 
     type PronunciationAnalysis {

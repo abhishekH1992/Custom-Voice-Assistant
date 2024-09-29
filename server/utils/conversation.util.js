@@ -127,12 +127,24 @@ const analyzeTranscription = async (prompt, model, chats) => {
                     Required JSON Structure:
                     {
                         "accentEmotionAnalysis": {
-                            "accent": string,
-                            "emotion": string
+                            "accent": {
+                                "key": string,
+                                "rate": number
+                            },
+                            "emotion": {
+                                "key": string,
+                                "rate": number
+                            }
                         },
                         "toneSentimentOverview": {
-                            "tone": string,
-                            "sentiment": string
+                            "tone": {
+                                "key": string,
+                                "rate": number
+                            },
+                            "sentiment": {
+                                "key": string,
+                                "rate": number
+                            }
                         },
                         "pronunciationAnalysis": {
                             "accuracy": {
@@ -192,9 +204,12 @@ const analyzeTranscription = async (prompt, model, chats) => {
                     1. Strictly adhere to the JSON structure provided.
                     2. All analyses must be relevant to sales training and the system prompt.
                     3. For 'loosingPromptContent', check if the user is deviating from the sales training scenario.
-                    4. All confidence scores must be between 0 and 5, with 5 being the highest confidence.
+                    4. All confidence scores must be between 0.5 and 5, with 5 being the highest confidence.
                     5. Ensure timestamps in timelines are consistent and relevant to the conversation flow.
                     6. Keywords should be sales-related terms from the conversation.
+                    7. For accent and emotionin accentEmotionAnalysis, rate it with scores must be between 0.5 and 5, with 5 being the best.
+                    8. For toneSentimentOverview, rate it with scores must be between 0.5 and 5, with 5 being the best.
+                    9. For pronunciationAnalysis, rate it with scores must be between 0.5 and 5, with 5 being the best.
 
                     System Prompt:
                     ${prompt}
@@ -205,6 +220,7 @@ const analyzeTranscription = async (prompt, model, chats) => {
             ],
             max_tokens: 1500
         });
+        console.log(response.choices[0].message.content);
         const parsedResponse = JSON.parse(response.choices[0].message.content);
 
         return parsedResponse;

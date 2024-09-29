@@ -125,7 +125,7 @@ const Template = () => {
                 streamedMessageRef.current += newContent;
                 setCurrentStreamedMessage({
                     role,
-                    content: streamedMessageRef.current
+                    content: streamedMessageRef.current,
                 });
                 isStreamingRef.current = true;
             } else if (isStreamingRef.current) {

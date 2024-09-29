@@ -63,7 +63,6 @@ const chatResolver = {
                         throw new Error('Failed to update feedback');
                     }
                 }
-                console.log(data);
                 return data;
             } catch (error) {
                 console.error('Error fetching user chat:', error);
