@@ -1,4 +1,4 @@
-import { Card, CardBody, Chip, Tooltip } from "@nextui-org/react";
+import { Card, CardBody, Progress, Tooltip } from "@nextui-org/react";
 import { RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, ResponsiveContainer } from 'recharts';
 
 const OverviewCard = ({ data }) => {
@@ -22,16 +22,16 @@ const OverviewCard = ({ data }) => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-4">
                         <div>
-                        <h4 className="font-semibold text-sm text-gray-600 mb-2">Abstract Summary</h4>
-                        <p className="text-sm">{data.abstractSummary}</p>
+                            <h4 className="font-semibold text-sm text-gray-600 mb-2">Abstract Summary</h4>
+                            <p className="text-sm">{data.abstractSummary}</p>
                         </div>
                         <div>
-                        <h4 className="font-semibold text-sm text-gray-600 mb-2">Key Points</h4>
-                        <p className="text-sm">{data.keyPoints}</p>
+                            <h4 className="font-semibold text-sm text-gray-600 mb-2">Key Points</h4>
+                            <p className="text-sm">{data.keyPoints}</p>
                         </div>
                         <div>
-                        <h4 className="font-semibold text-sm text-gray-600 mb-2">Action Item</h4>
-                        <p className="text-sm">{data.actionItem}</p>
+                            <h4 className="font-semibold text-sm text-gray-600 mb-2">Action Item</h4>
+                            <p className="text-sm">{data.actionItem}</p>
                         </div>
                     </div>
                     <div>
@@ -46,16 +46,49 @@ const OverviewCard = ({ data }) => {
                                 </RadarChart>
                             </ResponsiveContainer>
                         </div>
-                        <div className="flex justify-between mt-4">
-                            <Tooltip content={`Score: ${data.sentiment} / 5`}>
-                                <Chip color={getChipColor(data.sentiment)}>Sentiment</Chip>
-                            </Tooltip>
-                            <Tooltip content={`Score: ${data.awareness} / 5`}>
-                                <Chip color={getChipColor(data.awareness)}>Awareness</Chip>
-                            </Tooltip>
-                            <Tooltip content={`Score: ${data.proactive} / 5`}>
-                                <Chip color={getChipColor(data.proactive)}>Proactive</Chip>
-                            </Tooltip>
+                        <div className="grid mt-4">
+                            <div className="mb-4">
+                                <div className="flex justify-between items-center mb-1">
+                                    <p className="text-sm font-semibold">Sentiment</p>
+                                    <span className="text-sm">{Number(data.sentiment).toFixed(1)}</span>
+                                </div>
+                                <Tooltip content={`${Number(data.sentiment).toFixed(1)} / 5`} placement="right">
+                                    <Progress 
+                                        value={Math.min(Math.max(Number(data.sentiment) * 20, 0), 100)}
+                                        maxValue={100}
+                                        color={getChipColor(Number(data.sentiment))}
+                                        className="h-2"
+                                    />
+                                </Tooltip>
+                            </div>
+                            <div className="mb-4">
+                                <div className="flex justify-between items-center mb-1">
+                                    <p className="text-sm font-semibold">Awareness</p>
+                                    <span className="text-sm">{Number(data.awareness).toFixed(1)}</span>
+                                </div>
+                                <Tooltip content={`${Number(data.awareness).toFixed(1)} / 5`} placement="right">
+                                    <Progress 
+                                        value={Math.min(Math.max(Number(data.awareness) * 20, 0), 100)}
+                                        maxValue={100}
+                                        color={getChipColor(Number(data.awareness))}
+                                        className="h-2"
+                                    />
+                                </Tooltip>
+                            </div>
+                            <div className="mb-4">
+                                <div className="flex justify-between items-center mb-1">
+                                    <p className="text-sm font-semibold">Proactive</p>
+                                    <span className="text-sm">{Number(data.proactive).toFixed(1)}</span>
+                                </div>
+                                <Tooltip content={`${Number(data.proactive).toFixed(1)} / 5`} placement="right">
+                                    <Progress 
+                                        value={Math.min(Math.max(Number(data.proactive) * 20, 0), 100)}
+                                        maxValue={100}
+                                        color={getChipColor(Number(data.proactive))}
+                                        className="h-2"
+                                    />
+                                </Tooltip>
+                            </div>
                         </div>
                     </div>
                 </div>

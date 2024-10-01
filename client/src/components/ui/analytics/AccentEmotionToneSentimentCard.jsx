@@ -45,8 +45,8 @@ const AccentEmotionToneSentimentCard = ({ accentEmotion, toneSentiment }) => {
                 <CardBody>
                     <h3 className="text-lg font-semibold mb-4 text-gray-800">Accent and Emotion Analysis</h3>
                     <div className="space-y-4">
-                        {renderItem("Accent", accentEmotion.accent)}
-                        {renderItem("Emotion", accentEmotion.emotion)}
+                        {renderItem("Accent", accentEmotion?.accent)}
+                        {renderItem("Emotion", accentEmotion?.emotion)}
                     </div>
                 </CardBody>
             </Card>
@@ -54,8 +54,8 @@ const AccentEmotionToneSentimentCard = ({ accentEmotion, toneSentiment }) => {
                 <CardBody>
                     <h3 className="text-lg font-semibold mb-4 text-gray-800">Tone and Sentiment Overview</h3>
                     <div className="space-y-4">
-                        {renderItem("Tone", toneSentiment.tone)}
-                        {renderItem("Sentiment", toneSentiment.sentiment)}
+                        {renderItem("Tone", toneSentiment?.tone)}
+                        {renderItem("Sentiment", toneSentiment?.sentiment)}
                     </div>
                 </CardBody>
             </Card>

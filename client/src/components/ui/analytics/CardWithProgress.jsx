@@ -38,19 +38,19 @@ const CardWithProgress = ({ confidenceData }) => {
                         <div key={columnIndex} className="w-full md:w-1/4 px-2">
                             {column.map(([key, value]) => (
                                 <div key={key} className="mb-4">
-                                <div className="flex justify-between items-center mb-1">
-                                    <p className="text-sm font-semibold">{formatKey(key)}</p>
-                                    <span className="text-sm">{Number(value).toFixed(1)}</span>
-                                </div>
-                                <Tooltip content={`${Number(value).toFixed(1)} / 5`} placement="right">
-                                    <Progress 
-                                    value={Math.min(Math.max(Number(value) * 20, 0), 100)}
-                                    maxValue={100}
-                                    color={getProgressColor(Number(value))}
-                                    className="h-2"
-                                    aria-label={`${key} progress`}
-                                    />
-                                </Tooltip>
+                                    <div className="flex justify-between items-center mb-1">
+                                        <p className="text-sm font-semibold">{formatKey(key)}</p>
+                                        <span className="text-sm">{Number(value).toFixed(1)}</span>
+                                    </div>
+                                    <Tooltip content={`${Number(value).toFixed(1)} / 5`} placement="right">
+                                        <Progress 
+                                        value={Math.min(Math.max(Number(value) * 20, 0), 100)}
+                                        maxValue={100}
+                                        color={getProgressColor(Number(value))}
+                                        className="h-2"
+                                        aria-label={`${key} progress`}
+                                        />
+                                    </Tooltip>
                                 </div>
                             ))}
                         </div>

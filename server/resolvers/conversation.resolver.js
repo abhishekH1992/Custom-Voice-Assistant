@@ -79,11 +79,11 @@ const conversationResolver = {
                 }
                 fs.unlinkSync(filePath);
 
-                let template = await getRedisCached(cacheKey);
-                if(!template) {
-                    template = await Template.findByPk(templateId);
+                // let template = await getRedisCached(cacheKey);
+                // if(!template) {
+                    let template = await Template.findByPk(templateId);
                     await addRedisCached(cacheKey, template);
-                }
+                // }
                 const stream = await textCompletion(
                     template.model,
                     [

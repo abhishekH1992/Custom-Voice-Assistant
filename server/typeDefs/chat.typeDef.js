@@ -32,7 +32,7 @@ const chatTypeDef = `#graphql
         id: ID!
         userId: ID!
         templateId: ID!
-        chats: [ChatMessage!]!
+        chats: [ChatMessage!]
         name: String!
         feedback: Feedback
     }

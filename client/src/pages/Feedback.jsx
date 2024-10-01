@@ -44,13 +44,72 @@ const Feedback = () => {
     });
 
     useEffect(() => {
-        if (savedChat && savedChat?.getSavedChatAndFeedbackById) {
+        if (savedChat?.getSavedChatAndFeedbackById) {
             const { chats, name } = savedChat.getSavedChatAndFeedbackById;
-            const transformedChats = Object.values(chats).filter(chat => typeof chat === 'object').map(({ role, content }) => ({ role, content }));
-            setMessages(transformedChats);
-            setChatName(name);
+            if (chats && typeof chats === 'object') {
+                const transformedChats = Object.values(chats)
+                    .filter(chat => chat && typeof chat === 'object')
+                    .map(({ role, content }) => ({ role, content }));
+                setMessages(transformedChats);
+            }
+            if (name) {
+                setChatName(name);
+            }
         }
     }, [savedChat]);
+
+    const feedback = savedChat?.getSavedChatAndFeedbackById?.feedback;
+
+    const renderFeedbackContent = () => {
+        if (feedback) {
+            return (
+                <>
+                    <div className="grid gap-8">
+                        {feedback.confidenceScore && (
+                            <CardWithProgress confidenceData={feedback.confidenceScore}/>
+                        )}
+                    </div>
+                    <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
+                        {feedback.accentEmotionAnalysis && feedback.toneSentimentOverview && (
+                            <AccentEmotionToneSentimentCard 
+                                accentEmotion={feedback.accentEmotionAnalysis} 
+                                toneSentiment={feedback.toneSentimentOverview}
+                            />
+                        )}
+                        <div className="col-span-3">
+                            <SentimentAnalysis data={messages} />
+                        </div>
+                        {feedback.pronunciationAnalysis && (
+                            <PronunciationCard data={feedback.pronunciationAnalysis}/>
+                        )}
+                        {feedback.interactionSpeed && (
+                            <InteractionSpeedCard data={feedback.interactionSpeed}/>
+                        )}
+                        {feedback.loosingPromptContent && (
+                            <LoosingPromptContentCard data={feedback.loosingPromptContent}/>
+                        )}
+                        {feedback.fillerWordAnalysis && (
+                            <FillerWordCard data={feedback.fillerWordAnalysis}/>
+                        )}
+                        {feedback.overview && (
+                            <div className="col-span-4">
+                                <OverviewCard data={feedback.overview}/>
+                            </div>
+                        )}
+                        <div className='col-span-4'>
+                            <WordCloud data={messages}/>
+                        </div>
+                    </div>
+                </>
+            );
+        } else {
+            return (
+                <div className="flex items-center justify-center h-full">
+                    <p className="text-lg text-gray-500">No feedback available</p>
+                </div>
+            );
+        }
+    };
 
     return (
         <div className="flex flex-col min-h-screen">
@@ -60,29 +119,8 @@ const Feedback = () => {
                 <>
                     <Header name={chatName || templateData?.templateBySlug?.aiRole} icon={templateData?.templateBySlug?.icon}/>
                     <div className="w-full flex-grow m-auto overflow-y-auto">
-                        <div className="mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-                            <div className="grid gap-8">
-                                <CardWithProgress confidenceData={savedChat?.getSavedChatAndFeedbackById?.feedback?.confidenceScore}/>
-                            </div>
-                            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
-                                <AccentEmotionToneSentimentCard 
-                                    accentEmotion={savedChat?.getSavedChatAndFeedbackById?.feedback?.accentEmotionAnalysis} 
-                                    toneSentiment={savedChat?.getSavedChatAndFeedbackById?.feedback?.toneSentimentOverview}
-                                />
-                                <div className="col-span-3">
-                                    <SentimentAnalysis data={messages} />
-                                </div>
-                                <PronunciationCard data={savedChat?.getSavedChatAndFeedbackById?.feedback?.pronunciationAnalysis}/>
-                                <InteractionSpeedCard data={savedChat?.getSavedChatAndFeedbackById?.feedback?.interactionSpeed}/>
-                                <LoosingPromptContentCard data={savedChat?.getSavedChatAndFeedbackById?.feedback?.loosingPromptContent}/>
-                                <FillerWordCard data={savedChat?.getSavedChatAndFeedbackById?.feedback?.fillerWordAnalysis}/>
-                                <div className="col-span-4">
-                                    <OverviewCard data={savedChat?.getSavedChatAndFeedbackById?.feedback?.overview}/>
-                                </div>
-                                <div className='col-span-4'>
-                                    <WordCloud data={messages}/>
-                                </div>
-                            </div>
+                        <div className="mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 h-full">
+                            {renderFeedbackContent()}
                         </div>
                     </div>
                 </>

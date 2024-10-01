@@ -28,7 +28,6 @@ const chatResolver = {
                 });
 
                 if(!data.feedbackLastGeneratedAt || new Date(data.feedbackLastGeneratedAt) < new Date(data.updatedAt)) {
-                    let feedback;
                     const cacheKey = `template:${data.templateId}`;
                     let template = await getRedisCached(cacheKey);
                     if(!template) {
@@ -36,11 +35,8 @@ const chatResolver = {
                         await addRedisCached(cacheKey, template);
                     }
 
-                    if(!data.feedbackLastGeneratedAt) {
-                        feedback = await analyzeTranscription(template.prompt, template.model, data.chats);
-                    } else if (new Date(data.feedbackLastGeneratedAt) < new Date(data.updatedAt)) {
-                        feedback = await analyzeTranscription(data.chats);
-                    }
+                    const feedback = await analyzeTranscription(template.prompt, template.model, data.chats);
+                    // const feedbackChat = await analyzeChat(template.prompt, template.model, data.chats);
                     try {
                         await SavedChats.update(
                             {

@@ -194,9 +194,9 @@ const analyzeTranscription = async (prompt, model, chats) => {
                             "abstractSummary": string,
                             "keyPoints": string,
                             "actionItem": string,
-                            "sentiment": string
-                            "awareness": string
-                            "proactive": string
+                            "sentiment": number
+                            "awareness": number
+                            "proactive": number
                         }
                     }
 
@@ -220,7 +220,6 @@ const analyzeTranscription = async (prompt, model, chats) => {
             ],
             max_tokens: 1500
         });
-        console.log(response.choices[0].message.content);
         const parsedResponse = JSON.parse(response.choices[0].message.content);
 
         return parsedResponse;
@@ -229,5 +228,18 @@ const analyzeTranscription = async (prompt, model, chats) => {
         throw error;
     }
 };
+
+const analyzeChat = async(textStream, templateId, abortSignal) => {
+    const response = await openai.chat.completions.create({
+        model: model,
+        messages: [
+            
+        ],
+        max_tokens: 1500
+    });
+    const parsedResponse = JSON.parse(response.choices[0].message.content);
+
+    return parsedResponse;
+}
 
 module.exports = { textCompletion, transcribeAudio, textToSpeech, combinedStream, analyzeTranscription };
