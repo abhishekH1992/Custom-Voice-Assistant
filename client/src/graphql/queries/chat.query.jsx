@@ -109,3 +109,18 @@ export const GET_SAVED_CHAT_AND_GENERATE_FEEDBACK = gql`
         }
     }
 `;
+
+export const GET_USER_SAVED_CHAT_LIST = gql`
+    query GetUsersSavedTemplateListByUserId($userId: ID!) {
+        getUsersSavedTemplateListByUserId(userId: $userId) {
+            id
+            name
+            template {
+                aiRole
+                slug
+                icon
+                description
+            }
+        }
+    }
+`;

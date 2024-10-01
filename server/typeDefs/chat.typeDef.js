@@ -7,6 +7,7 @@ const chatTypeDef = `#graphql
     type Query {
         getSavedChatById(savedChatId: ID!, userId:ID!): SavedChat!
         getSavedChatAndFeedbackById(savedChatId: ID!, userId:ID!): SavedChat!
+        getUsersSavedTemplateListByUserId(userId:ID!): [UserChatList!]
     }
 
     input SaveChatInput {
@@ -120,6 +121,19 @@ const chatTypeDef = `#graphql
         content: String!
         feedback: String
         rate: Float
+    }
+
+    type UserChatList {
+        id: ID!
+        name: String!
+        template: Template
+    }
+
+    type Template {
+        icon: String!
+        slug: String!
+        description: String
+        aiRole: String!
     }
 `;
 

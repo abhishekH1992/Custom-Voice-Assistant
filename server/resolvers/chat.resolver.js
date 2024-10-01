@@ -1,4 +1,4 @@
-const { SavedChats } = require('../models');
+const { SavedChats, Template } = require('../models');
 const { analyzeTranscription, analyzeChat } = require('../utils/conversation.util');
 const { getRedisCached, addRedisCached } = require('../utils/redis.util');
 
@@ -37,7 +37,6 @@ const chatResolver = {
 
                     const feedback = await analyzeTranscription(template.prompt, template.model, data.chats);
                     const feedbackChat = await analyzeChat(template.prompt, template.model, data.chats);
-                    console.log(feedbackChat);
                     try {
                         await SavedChats.update(
                             {
@@ -67,6 +66,22 @@ const chatResolver = {
                 throw new Error('Failed to user chat');
             }
         },
+        getUsersSavedTemplateListByUserId: async(_, { userId }) => {
+            try {
+                return await SavedChats.findAll({
+                    where: { userId },
+                    include: [
+                        {
+                            model: Template,
+                            as: 'template'
+                        }
+                    ]
+                });
+            } catch (error) {
+                console.error('Error fetching user chat:', error);
+                throw new Error('Failed to user chat');
+            }
+        }
     },
     Mutation: {
         saveChat: async(_, { input }) => {

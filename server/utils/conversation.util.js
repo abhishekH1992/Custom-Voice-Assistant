@@ -272,8 +272,6 @@ const analyzeChat = async(prompt, model, chats) => {
         ],
         max_tokens: 2000
     });
-
-    console.log(response.choices[0].message.content);
     const parsedResponse = JSON.parse(response.choices[0].message.content);
 
     return parsedResponse;

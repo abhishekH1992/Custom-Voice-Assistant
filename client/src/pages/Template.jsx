@@ -86,7 +86,11 @@ const Template = () => {
     };
 
     const handleOpenSaveChatModal = () => {
-        setIsSaveChatModalOpen(true);
+        if(messages.length) {
+            setIsSaveChatModalOpen(true);
+        } else {
+            toast.error('Start the conversation before storing this chat');
+        }
     };
 
     const handleSelectType = (type) => {

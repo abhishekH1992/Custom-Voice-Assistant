@@ -11,6 +11,7 @@ import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
 import { Toaster } from "react-hot-toast"
 import Feedback from './pages/Feedback';
+import SavedChats from './pages/SavedChats';
 
 const ProtectedRoute = ({ children }) => {
     const { loading, error, data } = useQuery(ME_QUERY);
@@ -66,6 +67,11 @@ function App() {
                         <Route path='/' element={
                             <ProtectedRoute>
                                 <TemplateList />
+                            </ProtectedRoute>
+                        } />
+                        <Route path='/saved-chats' element={
+                            <ProtectedRoute>
+                                <SavedChats />
                             </ProtectedRoute>
                         } />
                         <Route path='/template/:templateSlug' element={
