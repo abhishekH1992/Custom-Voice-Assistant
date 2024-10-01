@@ -1,7 +1,7 @@
 import { Card, CardBody, Chip } from "@nextui-org/react";
 import GaugeChart from "./GuageChart";
 
-const AccentEmotionToneSentimentCard = ({ accentEmotion, toneSentiment }) => {
+const AccentEmotionToneSentimentCard = ({ accentEmotion, toneSentiment, capitalizeFirstLetter }) => {
     const getProgressColor = (value) => {
         if (value <= 2) return "danger";
         if (value <= 3.5) return "warning";
@@ -18,7 +18,7 @@ const AccentEmotionToneSentimentCard = ({ accentEmotion, toneSentiment }) => {
                         variant="flat" 
                         size="sm"
                     >
-                        {data.key}
+                        {capitalizeFirstLetter(data.key)}
                     </Chip>
                     <span className="text-sm font-semibold">
                         {Number(data.rate).toFixed(1)}

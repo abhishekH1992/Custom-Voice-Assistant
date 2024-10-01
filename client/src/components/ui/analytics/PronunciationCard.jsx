@@ -1,6 +1,6 @@
 import { Card, CardBody, Progress, Tooltip } from "@nextui-org/react";
 
-const PronunciationCard = ({ data }) => {
+const PronunciationCard = ({ data, capitalizeFirstLetter }) => {
     const getColorClass = (rate) => {
         if (rate <= 2) return "text-danger";
         if (rate <= 3.5) return "text-warning";
@@ -26,7 +26,7 @@ const PronunciationCard = ({ data }) => {
                                 <p className="font-semibold text-sm capitalize text-gray-700">{key}</p>
                                 <Tooltip content={`Score: ${value.rate.toFixed(2)} / 5`}>
                                     <span className={`text-sm font-bold ${getColorClass(value.rate)}`}>
-                                    {value.key}
+                                    {capitalizeFirstLetter(value.key)}
                                     </span>
                                 </Tooltip>
                             </div>

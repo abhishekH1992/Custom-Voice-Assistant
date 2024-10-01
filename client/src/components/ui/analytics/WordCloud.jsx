@@ -24,8 +24,8 @@ const WordCloud = ({ data }) => {
         }));
 
     const customRenderer = (tag, size, color) => (
-        <Tooltip content={`Frequency: ${tag.count}`}>
-            <span key={tag.value} style={{
+        <Tooltip key={tag.value} content={`Frequency: ${tag.count}`}>
+            <span style={{
                 animation: 'blinker 3s linear infinite',
                 animationDelay: `${Math.random() * 2}s`,
                 fontSize: `${size}px`,

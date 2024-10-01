@@ -178,21 +178,71 @@ const SentimentAnalysis = ({ data }) => {
         }
     };
 
+    const responsiveChartOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                position: 'top',
+                labels: {
+                    boxWidth: 10,
+                    font: {
+                        size: 10
+                    }
+                }
+            },
+            title: {
+                font: {
+                    size: 14
+                }
+            }
+        },
+        scales: {
+            x: {
+                ticks: {
+                    font: {
+                        size: 10
+                    }
+                }
+            },
+            y: {
+                ticks: {
+                    font: {
+                        size: 10
+                    }
+                }
+            }
+        }
+    };
+
+    // Merge responsive options with existing options
+    const mergeOptions = (baseOptions) => ({
+        ...baseOptions,
+        ...responsiveChartOptions,
+        scales: {
+            ...baseOptions.scales,
+            ...responsiveChartOptions.scales
+        }
+    });
+
+    const responsiveCombinedChartOptions = mergeOptions(combinedChartOptions);
+    const responsivePositiveNegativeChartOptions = mergeOptions(positiveNegativeChartOptions);
+
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <Card className="p-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 lg:gap-8">
+            <Card className="p-2 sm:p-4">
                 <CardBody>
-                    <h3 className="text-lg font-semibold mb-4 text-gray-800">Sentiment and Word Count Analysis</h3>
-                    <div style={{ height: '400px' }}>
-                        <Chart type='bar' data={combinedChartData} options={combinedChartOptions} />
+                    <h3 className="text-base sm:text-lg font-semibold mb-2 sm:mb-4 text-gray-800">Sentiment and Word Count Analysis</h3>
+                    <div className="h-64 sm:h-80 lg:h-96">
+                        <Chart type='bar' data={combinedChartData} options={responsiveCombinedChartOptions} />
                     </div>
                 </CardBody>
             </Card>
-            <Card className="p-4">
+            <Card className="p-2 sm:p-4">
                 <CardBody>
-                    <h3 className="text-lg font-semibold mb-4 text-gray-800">Positive vs Negative Words per Message</h3>
-                    <div style={{ height: '400px' }}>
-                        <Chart type='bar' data={positiveNegativeChartData} options={positiveNegativeChartOptions} />
+                    <h3 className="text-base sm:text-lg font-semibold mb-2 sm:mb-4 text-gray-800">Positive vs Negative Words per Message</h3>
+                    <div className="h-64 sm:h-80 lg:h-96">
+                        <Chart type='bar' data={positiveNegativeChartData} options={responsivePositiveNegativeChartOptions} />
                     </div>
                 </CardBody>
             </Card>

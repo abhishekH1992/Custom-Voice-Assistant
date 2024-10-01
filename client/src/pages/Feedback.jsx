@@ -15,6 +15,7 @@ import LoosingPromptContentCard from '../components/ui/analytics/LoosingPromptCo
 import OverviewCard from '../components/ui/analytics/OverviewCard';
 import SentimentAnalysis from '../components/ui/analytics/SentimentAnalysis';
 import WordCloud from '../components/ui/analytics/WordCloud';
+import ConversationTable from '../components/ui/analytics/ConversationTable';
 
 const Feedback = () => {
     const { templateSlug, savedChatId } = useParams();
@@ -58,7 +59,12 @@ const Feedback = () => {
         }
     }, [savedChat]);
 
+    const capitalizeFirstLetter = (string) => {
+        return string.charAt(0).toUpperCase() + string.slice(1);
+    };
+
     const feedback = savedChat?.getSavedChatAndFeedbackById?.feedback;
+    const table = savedChat?.getSavedChatAndFeedbackById?.table;
 
     const renderFeedbackContent = () => {
         if (feedback) {
@@ -66,39 +72,47 @@ const Feedback = () => {
                 <>
                     <div className="grid gap-8">
                         {feedback.confidenceScore && (
-                            <CardWithProgress confidenceData={feedback.confidenceScore}/>
+                            <CardWithProgress confidenceData={feedback.confidenceScore} />
                         )}
                     </div>
-                    <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
                         {feedback.accentEmotionAnalysis && feedback.toneSentimentOverview && (
                             <AccentEmotionToneSentimentCard 
                                 accentEmotion={feedback.accentEmotionAnalysis} 
                                 toneSentiment={feedback.toneSentimentOverview}
+                                capitalizeFirstLetter={capitalizeFirstLetter}
                             />
                         )}
-                        <div className="col-span-3">
+                        <div className="sm:col-span-3">
                             <SentimentAnalysis data={messages} />
                         </div>
                         {feedback.pronunciationAnalysis && (
-                            <PronunciationCard data={feedback.pronunciationAnalysis}/>
+                            <PronunciationCard data={feedback.pronunciationAnalysis} capitalizeFirstLetter={capitalizeFirstLetter}/>
                         )}
                         {feedback.interactionSpeed && (
-                            <InteractionSpeedCard data={feedback.interactionSpeed}/>
+                            <InteractionSpeedCard data={feedback.interactionSpeed} capitalizeFirstLetter={capitalizeFirstLetter}/>
                         )}
                         {feedback.loosingPromptContent && (
-                            <LoosingPromptContentCard data={feedback.loosingPromptContent}/>
+                            <LoosingPromptContentCard data={feedback.loosingPromptContent} capitalizeFirstLetter={capitalizeFirstLetter}/>
                         )}
                         {feedback.fillerWordAnalysis && (
-                            <FillerWordCard data={feedback.fillerWordAnalysis}/>
+                            <FillerWordCard data={feedback.fillerWordAnalysis} capitalizeFirstLetter={capitalizeFirstLetter}/>
                         )}
                         {feedback.overview && (
                             <div className="col-span-4">
                                 <OverviewCard data={feedback.overview}/>
                             </div>
                         )}
-                        <div className='col-span-4'>
-                            <WordCloud data={messages}/>
-                        </div>
+                        {messages && (
+                            <div className='col-span-4'>
+                                <WordCloud data={messages}/>
+                            </div>
+                        )}
+                        {table && (
+                            <div className="col-span-4">
+                                <ConversationTable data={table} />
+                            </div>
+                        )}
                     </div>
                 </>
             );

@@ -118,11 +118,11 @@ const analyzeTranscription = async (prompt, model, chats) => {
             messages: [
                 {
                     role: "system",
-                    content: "You are an expert in conversation analysis, specifically for sales training scenarios. Analyze the conversation strictly in the context of the given system prompt and user messages. Provide a detailed, accurate analysis using the specified JSON format and keys."
+                    content: "You are an expert in conversation analysis. Analyze the conversation strictly in the context of the given system prompt and user messages. Provide a detailed, accurate analysis using the specified JSON format and keys."
                 },
                 {
                     role: "user",
-                    content: `Analyze the following conversation in the context of a sales training scenario. Provide a detailed analysis in the exact JSON format specified, using the given keys. Ensure all analyses are relevant to sales training and the system prompt.
+                    content: `Analyze the following conversation in the context of a call center training scenario. Provide a detailed analysis in the exact JSON format specified, using the given keys. Ensure all analyses are relevant to call center and the system prompt.
 
                     Required JSON Structure:
                     {
@@ -194,22 +194,24 @@ const analyzeTranscription = async (prompt, model, chats) => {
                             "abstractSummary": string,
                             "keyPoints": string,
                             "actionItem": string,
-                            "sentiment": number
-                            "awareness": number
-                            "proactive": number
+                            "sentiment": number,
+                            "awareness": number,
+                            "proactive": number,
                         }
                     }
 
                     Instructions:
                     1. Strictly adhere to the JSON structure provided.
-                    2. All analyses must be relevant to sales training and the system prompt.
-                    3. For 'loosingPromptContent', check if the user is deviating from the sales training scenario.
+                    2. All analyses must be relevant to call center training and the system prompt.
+                    3. For 'loosingPromptContent', check if the user is deviating from the call center training scenario.
                     4. All confidence scores must be between 0.5 and 5, with 5 being the highest confidence.
                     5. Ensure timestamps in timelines are consistent and relevant to the conversation flow.
-                    6. Keywords should be sales-related terms from the conversation.
+                    6. Keywords should be system prompt terms from the conversation.
                     7. For accent and emotionin accentEmotionAnalysis, rate it with scores must be between 0.5 and 5, with 5 being the best.
                     8. For toneSentimentOverview, rate it with scores must be between 0.5 and 5, with 5 being the best.
                     9. For pronunciationAnalysis, rate it with scores must be between 0.5 and 5, with 5 being the best.
+                    10. Don't provide response in markdown structure
+                    11. Strictly remove unwanted special character or string which can break JSON.parse for this JSON
 
                     System Prompt:
                     ${prompt}
@@ -229,17 +231,52 @@ const analyzeTranscription = async (prompt, model, chats) => {
     }
 };
 
-const analyzeChat = async(textStream, templateId, abortSignal) => {
+const analyzeChat = async(prompt, model, chats) => {
+    const userMessages = chats
+            .filter(message => message.role === "user")
+            .map(message => message.content)
+            .join("\n\n");
     const response = await openai.chat.completions.create({
         model: model,
         messages: [
-            
+            {
+                "role": "system",
+                "content": "You are an expert in conversation analysis for call center training scenarios. Analyze the following conversation and provide feedback for each user message. Use the specified JSON format."
+            },
+            {
+                "role": "user",
+                "content": `Analyze this call center training conversation. Provide feedback and ratings for user messages only. Use this exact JSON format for each message:
+              
+                {
+                  role: 'user' or 'system',
+                  content: 'The actual message content',
+                  feedback: 'Constructive and short feedback for user messages',
+                  rate: Number between 0.5 and 5 for user messages
+                }
+              
+                Instructions:
+                1. Provide feedback only for user messages, focusing on call center skills.
+                2. Rate user messages on a scale of 0.5 to 5, where 5 is excellent.
+                3. For system messages, set feedback and rate to null.
+                4. Ensure all feedback is relevant to call center training.
+                5. Strictly adhere to the JSON structure provided.
+                6. Don't provide response in markdown structure
+                7. Strictly remove unwanted special character or string which can break JSON.parse for this JSON
+              
+                Conversation to analyze:
+                ${JSON.stringify(userMessages)}
+                
+                System Prompt:
+                ${prompt}`
+            }
         ],
-        max_tokens: 1500
+        max_tokens: 2000
     });
+
+    console.log(response.choices[0].message.content);
     const parsedResponse = JSON.parse(response.choices[0].message.content);
 
     return parsedResponse;
 }
 
-module.exports = { textCompletion, transcribeAudio, textToSpeech, combinedStream, analyzeTranscription };
+module.exports = { textCompletion, transcribeAudio, textToSpeech, combinedStream, analyzeTranscription, analyzeChat };

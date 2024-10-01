@@ -100,6 +100,12 @@ export const GET_SAVED_CHAT_AND_GENERATE_FEEDBACK = gql`
                     proactive
                 }
             }
+            table {
+                role
+                content
+                feedback
+                rate
+            }
         }
     }
 `;

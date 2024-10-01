@@ -1,6 +1,6 @@
 import { Card, CardBody, Chip, Progress, Tooltip } from "@nextui-org/react";
 
-const FillerWordCard = ({ data }) => {
+const FillerWordCard = ({ data, capitalizeFirstLetter }) => {
     const getColorClass = (count) => {
         if (count <= 3) return "text-success";
         if (count <= 7) return "text-warning";
@@ -46,7 +46,7 @@ const FillerWordCard = ({ data }) => {
                                 variant="flat"
                                 size="sm"
                             >
-                                {word}
+                                {capitalizeFirstLetter(word)}
                             </Chip>
                             ))}
                         </div>

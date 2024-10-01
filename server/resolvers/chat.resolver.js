@@ -1,5 +1,5 @@
 const { SavedChats } = require('../models');
-const { analyzeTranscription } = require('../utils/conversation.util');
+const { analyzeTranscription, analyzeChat } = require('../utils/conversation.util');
 const { getRedisCached, addRedisCached } = require('../utils/redis.util');
 
 const chatResolver = {
@@ -36,12 +36,14 @@ const chatResolver = {
                     }
 
                     const feedback = await analyzeTranscription(template.prompt, template.model, data.chats);
-                    // const feedbackChat = await analyzeChat(template.prompt, template.model, data.chats);
+                    const feedbackChat = await analyzeChat(template.prompt, template.model, data.chats);
+                    console.log(feedbackChat);
                     try {
                         await SavedChats.update(
                             {
                                 feedback: feedback,
-                                feedbackLastGeneratedAt: new Date()
+                                feedbackLastGeneratedAt: new Date(),
+                                table: feedbackChat
                             },
                             {
                                 where: { id: savedChatId }

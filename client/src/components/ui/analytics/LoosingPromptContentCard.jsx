@@ -2,11 +2,11 @@ import { Card, CardBody, Chip, Tooltip } from "@nextui-org/react";
 import { TEMPLATE_SUCCESS, TEMPLATE_WARNING, TEMPLATE_DANGER } from "../../../constant/colors";
 import GaugeChart from "./GuageChart";
 
-const LoosingPromptContentCard = ({ data }) => {
+const LoosingPromptContentCard = ({ data, capitalizeFirstLetter }) => {
     const getColor = (value) => {
-        if (value <= 2) return TEMPLATE_DANGER;
+        if (value <= 2) return TEMPLATE_SUCCESS;
         if (value <= 3.5) return TEMPLATE_WARNING;
-        return TEMPLATE_SUCCESS;
+        return TEMPLATE_DANGER;
     };
 
     const getBadgeColor = (key) => {
@@ -19,15 +19,15 @@ const LoosingPromptContentCard = ({ data }) => {
         <Card className="p-4">
             <CardBody>
                 <h3 className="text-lg font-semibold mb-4 text-gray-800">Loosing Prompt Content</h3>
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center space-y-4 md:space-y-0">
-                    <div className="space-y-4 w-full md:w-1/2">
+                <div className="flex flex-col xl:flex-row xl:justify-between items-start xl:items-center space-y-4 md:space-y-0">
+                    <div className="space-y-4 w-full xl:w-1/2">
                         <div className="flex gap-4 items-center">
                             <p className="font-medium text-sm text-gray-600">Is Losing Content:</p>
                             <Chip 
                                 color={getBadgeColor(data.isLosingContent.key)}
                                 variant="flat"
                             >
-                                {data.isLosingContent.key}
+                                {capitalizeFirstLetter(data.isLosingContent.key)}
                             </Chip>
                         </div>
                         <div>
@@ -47,7 +47,7 @@ const LoosingPromptContentCard = ({ data }) => {
                             </ul>
                         </div>
                     </div>
-                    <div className="w-full md:w-1/2 h-48">
+                    <div className="w-full xl:w-1/2 h-48">
                         <GaugeChart value={data.isLosingContent.rate} height={125} startAngle={180} innerRadius={60} outerRadius={80}/>
                         <div className="mt-2 font-bold text-lg text-center">
                             {Number(data.isLosingContent.rate).toFixed(1)}

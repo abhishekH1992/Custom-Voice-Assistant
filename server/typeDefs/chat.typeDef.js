@@ -35,6 +35,7 @@ const chatTypeDef = `#graphql
         chats: [ChatMessage!]
         name: String!
         feedback: Feedback
+        table: [ConversationTableFeedback!]
     }
 
     type ChatMessage {
@@ -112,6 +113,13 @@ const chatTypeDef = `#graphql
         sentiment: String!
         awareness: String!
         proactive: String!
+    }
+
+    type ConversationTableFeedback {
+        role: String!
+        content: String!
+        feedback: String
+        rate: Float
     }
 `;
 
