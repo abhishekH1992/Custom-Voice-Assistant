@@ -19,8 +19,8 @@ const LoosingPromptContentCard = ({ data, capitalizeFirstLetter }) => {
         <Card className="p-4">
             <CardBody>
                 <h3 className="text-lg font-semibold mb-4 text-gray-800">Loosing Prompt Content</h3>
-                <div className="flex flex-col xl:flex-row xl:justify-between items-start xl:items-center space-y-4 md:space-y-0">
-                    <div className="space-y-4 w-full xl:w-1/2">
+                <div className="flex flex-col 2xl:flex-row 2xl:justify-between items-start 2xl:items-center space-y-4 md:space-y-0">
+                    <div className="space-y-4 w-full 2xl:w-1/2">
                         <div className="flex gap-4 items-center">
                             <p className="font-medium text-sm text-gray-600">Is Losing Content:</p>
                             <Chip 
@@ -47,7 +47,7 @@ const LoosingPromptContentCard = ({ data, capitalizeFirstLetter }) => {
                             </ul>
                         </div>
                     </div>
-                    <div className="w-full xl:w-1/2 h-48">
+                    <div className="w-full 2xl:w-1/2 h-48">
                         <GaugeChart value={data.isLosingContent.rate} height={125} startAngle={180} innerRadius={60} outerRadius={80}/>
                         <div className="mt-2 font-bold text-lg text-center">
                             {Number(data.isLosingContent.rate).toFixed(1)}

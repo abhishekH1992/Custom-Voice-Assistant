@@ -31,16 +31,11 @@ const Feedback = () => {
     const { loading: userLoading, data: userData } = useQuery(ME_QUERY);
 
     const { data: templateData, loading: templateLoading } = useQuery(GET_TEMPLATE_BY_SLUG, {
-        variables: {
-            slug: templateSlug
-        }
+        variables: { slug: templateSlug }
     });
 
     const { data: savedChat, loading: savedChatLoading } = useQuery(GET_SAVED_CHAT_AND_GENERATE_FEEDBACK, {
-        variables: {
-            savedChatId,
-            userId: userData?.me?.id
-        },
+        variables: { savedChatId, userId: userData?.me?.id },
         skip: !userData?.me?.id,
     });
 
@@ -69,12 +64,12 @@ const Feedback = () => {
         if (feedback) {
             return (
                 <>
-                    <div className="grid gap-8">
+                    <div className="grid gap-4 md:gap-8">
                         {feedback.confidenceScore && (
                             <CardWithProgress confidenceData={feedback.confidenceScore} />
                         )}
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8">
                         {feedback.accentEmotionAnalysis && feedback.toneSentimentOverview && (
                             <AccentEmotionToneSentimentCard 
                                 accentEmotion={feedback.accentEmotionAnalysis} 
@@ -82,7 +77,7 @@ const Feedback = () => {
                                 capitalizeFirstLetter={capitalizeFirstLetter}
                             />
                         )}
-                        <div className="sm:col-span-3">
+                        <div className="sm:col-span-2 lg:col-span-3">
                             <SentimentAnalysis data={messages} />
                         </div>
                         {feedback.pronunciationAnalysis && (
@@ -98,17 +93,17 @@ const Feedback = () => {
                             <FillerWordCard data={feedback.fillerWordAnalysis} capitalizeFirstLetter={capitalizeFirstLetter}/>
                         )}
                         {feedback.overview && (
-                            <div className="col-span-4">
+                            <div className="col-span-1 sm:col-span-2 lg:col-span-4">
                                 <OverviewCard data={feedback.overview}/>
                             </div>
                         )}
                         {messages && (
-                            <div className='col-span-4'>
+                            <div className='col-span-1 sm:col-span-2 lg:col-span-4'>
                                 <WordCloud data={messages}/>
                             </div>
                         )}
                         {table && (
-                            <div className="col-span-4">
+                            <div className="col-span-1 sm:col-span-2 lg:col-span-4">
                                 <ConversationTable data={table} />
                             </div>
                         )}
@@ -132,7 +127,7 @@ const Feedback = () => {
                 <>
                     <Header name={chatName || templateData?.templateBySlug?.aiRole} icon={templateData?.templateBySlug?.icon}/>
                     <div className="w-full flex-grow m-auto overflow-y-auto">
-                        <div className="mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 h-full">
+                        <div className="mx-auto px-4 sm:px-6 lg:px-8 py-4 md:py-8 space-y-4 md:space-y-8 h-full">
                             {renderFeedbackContent()}
                         </div>
                     </div>
