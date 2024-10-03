@@ -104,7 +104,7 @@ const Feedback = () => {
                         )}
                         {table && (
                             <div className="col-span-1 sm:col-span-2 lg:col-span-4">
-                                <ConversationTable data={table} />
+                                <ConversationTable data={table} capitalizeFirstLetter={capitalizeFirstLetter}/>
                             </div>
                         )}
                     </div>

@@ -2,7 +2,7 @@ import { Headphones } from "lucide-react";
 import { useTheme } from "../../../context/ThemeContext";
 import { Card, CardBody } from "@nextui-org/react";
 
-const ConversationTable = ({ data }) => {
+const ConversationTable = ({ data, capitalizeFirstLetter }) => {
     const { theme } = useTheme();
 
     const isDark = theme === 'dark';
@@ -28,7 +28,7 @@ const ConversationTable = ({ data }) => {
                                         : (isDark ? 'bg-gray-700' : 'bg-gray-50')
                                     }>
                                         <td className={`px-4 py-2 border ${isDark ? 'border-gray-600' : 'border-gray-300'}`}>
-                                            {message.role.toUpperCase()}
+                                            {capitalizeFirstLetter(message.role)}
                                         </td>
                                         <td className={`px-4 py-2 border ${isDark ? 'border-gray-600' : 'border-gray-300'}`}>
                                             {message.content}
