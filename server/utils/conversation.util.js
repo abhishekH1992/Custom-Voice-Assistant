@@ -222,7 +222,7 @@ const analyzeTranscription = async (prompt, model, chats) => {
             ],
             max_tokens: 1500
         });
-        const parsedResponse = JSON.parse(response.choices[0].message.content);
+        const parsedResponse = safeJSONParse(response.choices[0].message.content.trim());
 
         return parsedResponse;
     } catch (error) {
@@ -262,6 +262,9 @@ const analyzeChat = async(prompt, model, chats) => {
                 5. Strictly adhere to the JSON structure provided.
                 6. Don't provide response in markdown structure
                 7. Strictly remove unwanted special character or string which can break JSON.parse for this JSON
+                8. Remove white spaces from the response from beginning and end
+                9. Put response in array
+                10. Response strictly be valid JSON and can be parsed successfully
               
                 Conversation to analyze:
                 ${JSON.stringify(userMessages)}
@@ -272,9 +275,25 @@ const analyzeChat = async(prompt, model, chats) => {
         ],
         max_tokens: 2000
     });
-    const parsedResponse = JSON.parse(response.choices[0].message.content);
-
+    const parsedResponse = safeJSONParse(response.choices[0].message.content);
     return parsedResponse;
+}
+
+const safeJSONParse = async (str) => {
+    try {
+        return JSON.parse(str);
+    } catch (e) {
+        const cleanedStr = str.replace(/[\u0000-\u001F]+/g, "")
+                              .replace(/\\n/g, "\\n")
+                              .replace(/\\'/g, "\\'")
+                              .replace(/\\"/g, '\\"')
+                              .replace(/\\&/g, "\\&")
+                              .replace(/\\r/g, "\\r")
+                              .replace(/\\t/g, "\\t")
+                              .replace(/\\b/g, "\\b")
+                              .replace(/\\f/g, "\\f");
+        return JSON.parse(cleanedStr);
+    }
 }
 
 module.exports = { textCompletion, transcribeAudio, textToSpeech, combinedStream, analyzeTranscription, analyzeChat };

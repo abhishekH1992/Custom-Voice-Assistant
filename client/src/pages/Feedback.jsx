@@ -65,7 +65,6 @@ const Feedback = () => {
 
     const feedback = savedChat?.getSavedChatAndFeedbackById?.feedback;
     const table = savedChat?.getSavedChatAndFeedbackById?.table;
-
     const renderFeedbackContent = () => {
         if (feedback) {
             return (

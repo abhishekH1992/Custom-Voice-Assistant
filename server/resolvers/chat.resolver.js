@@ -19,7 +19,7 @@ const chatResolver = {
             }
         },
         getSavedChatAndFeedbackById: async(_, { savedChatId, userId }) => {
-            try {
+            // try {
                 const data = await SavedChats.findOne({
                     where: {
                         id: savedChatId,
@@ -61,10 +61,10 @@ const chatResolver = {
                     }
                 }
                 return data;
-            } catch (error) {
-                console.error('Error fetching user chat:', error);
-                throw new Error('Failed to user chat');
-            }
+            // } catch (error) {
+            //     console.error('Error fetching user chat:', error);
+            //     throw new Error('Failed to user chat');
+            // }
         },
         getUsersSavedTemplateListByUserId: async(_, { userId }) => {
             try {
