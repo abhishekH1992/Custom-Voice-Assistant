@@ -24,5 +24,17 @@
             "src": "/(.*)",
             "dest": "client/build/$1"
         }
-    ]
+    ],
+    "env": {
+        "CHATGPT_SECRET": "@chatgpt_secret",
+        "JWT_EXPIRATION": "@jwt_expiration",
+        "JWT_SECRET": "@jwt_secret",
+        "SESSION_SECRET": "@session_secret",
+        "USER_TRANSCRIBE_PROMPT": "@user_transcribe_prompt",
+        "CACHE_LIFE_SHORT": "@cache_life_short",
+        "CACHE_LIFE_MEDIUM": "@cache_life_medium",
+        "CACHE_LIFE_LONG": "@cache_life_long",
+        "REDIS_URL": "@redis_url",
+        "DATABASE_URL": "@database_url"
+    }
 }
