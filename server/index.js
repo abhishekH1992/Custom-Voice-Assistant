@@ -100,7 +100,7 @@ async function startApolloServer() {
         '/graphql',
         cors({
             origin: isProduction 
-                ? 'https://your-production-domain.com' 
+                ? 'https://akoplus.vercel.app' 
                 : 'http://localhost:3000',
             credentials: true,
         }),
