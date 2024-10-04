@@ -1,4 +1,3 @@
-import { Headphones } from "lucide-react";
 import { useTheme } from "../../../context/ThemeContext";
 import { Card, CardBody } from "@nextui-org/react";
 

@@ -493,7 +493,6 @@ const Template = () => {
         navigator.mediaDevices.getUserMedia({ audio: true })
             .then(stream => {
                 const audioContext = new AudioContext();
-                const source = audioContext.createMediaStreamSource(stream);
 
                 vadRef.current = vad(audioContext, stream, {
                     onVoiceStart: () => {

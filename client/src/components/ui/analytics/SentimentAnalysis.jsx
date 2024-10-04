@@ -27,12 +27,6 @@ const SentimentAnalysis = ({ data }) => {
         });
     }, [data]);
 
-    const getSentimentColor = (score) => {
-        if (score > 0.5) return TEMPLATE_SUCCESS;
-        if (score < -0.5) return TEMPLATE_DANGER;
-        return TEMPLATE_WARNING;
-    };
-
     const combinedChartData = {
         labels: analyzeSentiment.map(item => item.index),
         datasets: [
@@ -103,40 +97,6 @@ const SentimentAnalysis = ({ data }) => {
                 grid: { drawOnChartArea: false }
             },
         }
-    };
-
-    const sentimentDistribution = useMemo(() => {
-        const distribution = { Positive: 0, Neutral: 0, Negative: 0 };
-        analyzeSentiment.forEach(item => {
-            if (item.sentiment > 0.5) distribution.Positive++;
-            else if (item.sentiment < -0.5) distribution.Negative++;
-            else distribution.Neutral++;
-        });
-        return distribution;
-    }, [analyzeSentiment]);
-
-    const doughnutChartData = {
-        labels: ['Positive', 'Neutral', 'Negative'],
-        datasets: [
-            {
-                data: [sentimentDistribution.Positive, sentimentDistribution.Neutral, sentimentDistribution.Negative],
-                backgroundColor: [TEMPLATE_SUCCESS, TEMPLATE_WARNING, TEMPLATE_DANGER],
-            },
-        ],
-    };
-
-    const doughnutChartOptions = {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            legend: { position: 'top' },
-            title: {
-                display: true,
-                text: 'Sentiment Distribution',
-                font: { size: 18 }
-            }
-        },
-        cutout: '70%',
     };
 
     const positiveNegativeChartData = {

@@ -1,7 +1,7 @@
 import { useContext } from "react";
 import { SidebarContext } from "./SideNav";
 import { useTheme } from "../../context/ThemeContext";
-import { Link, useLocation } from "react-router-dom";
+import { Link } from "react-router-dom";
 
 const SidebarItem = ({ icon, text, active, to }) => {
     const context = useContext(SidebarContext);
