@@ -1,11 +1,6 @@
 const express = require('express');
-const http = require('http');
 const { ApolloServer } = require('@apollo/server');
 const { expressMiddleware } = require('@apollo/server/express4');
-const { ApolloServerPluginDrainHttpServer } = require('@apollo/server/plugin/drainHttpServer');
-const { WebSocketServer } = require('ws');
-const { useServer } = require('graphql-ws/lib/use/ws');
-const { makeExecutableSchema } = require('@graphql-tools/schema');
 const cors = require('cors');
 const session = require('express-session');
 const authMiddleware = require('./middleware/auth.js');
@@ -18,10 +13,6 @@ const mergedResolver = require('./resolvers/index.js');
 dotenv.config();
 
 const app = express();
-const httpServer = http.createServer(app);
-
-const PORT = process.env.PORT || 5000;
-const isProduction = process.env.NODE_ENV === 'production';
 
 // Create the schema
 const schema = makeExecutableSchema({
@@ -35,7 +26,7 @@ app.use(session({
     resave: false,
     saveUninitialized: false,
     cookie: { 
-        secure: isProduction,
+        secure: true,
         sameSite: 'strict'
     }
 }));
@@ -55,53 +46,19 @@ const authenticate = async (token) => {
     }
 };
 
-// Create and start Apollo Server
-async function startApolloServer() {
-    let serverCleanup = null;
+// Create Apollo Server
+const server = new ApolloServer({
+    schema,
+});
 
-    if (!isProduction) {
-        // Set up WebSocket server for subscriptions in development
-        const wsServer = new WebSocketServer({
-            server: httpServer,
-            path: '/graphql',
-        });
-
-        serverCleanup = useServer({
-            schema,
-            context: async (ctx) => {
-                const token = ctx.connectionParams?.authorization || '';
-                const user = await authenticate(token);
-                return { user };
-            },
-        }, wsServer);
-    }
-
-    const server = new ApolloServer({
-        schema,
-        plugins: [
-            ApolloServerPluginDrainHttpServer({ httpServer }),
-            {
-                async serverWillStart() {
-                    return {
-                        async drainServer() {
-                            if (serverCleanup) {
-                                await serverCleanup.dispose();
-                            }
-                        },
-                    };
-                },
-            },
-        ],
-    });
-
+// Start the server
+async function startServer() {
     await server.start();
 
     app.use(
         '/graphql',
         cors({
-            origin: isProduction 
-                ? 'https://akoplus.vercel.app' 
-                : 'http://localhost:3000',
+            origin: process.env.CLIENT_URL || 'https://your-app-name.vercel.app',
             credentials: true,
         }),
         express.json(),
@@ -119,17 +76,15 @@ async function startApolloServer() {
         res.status(200).send('OK');
     });
 
-    if (isProduction) {
-        // In production, export the Express API for serverless use
-        module.exports = app;
-    } else {
-        // In development, start the server
-        await new Promise((resolve) => httpServer.listen({ port: PORT }, resolve));
-        console.log(`🚀 Server ready at http://localhost:${PORT}/graphql`);
-        console.log(`🚀 Subscriptions ready at ws://localhost:${PORT}/graphql`);
-    }
+    // Catch-all route to handle client-side routing
+    app.get('*', (req, res) => {
+        res.sendFile(path.join(__dirname, '../client/build', 'index.html'));
+    });
+
+    // Export the Express API
+    module.exports = app;
 }
 
-startApolloServer().catch(error => {
+startServer().catch(error => {
     console.error('Failed to start the server:', error);
 });

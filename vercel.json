@@ -17,6 +17,10 @@
             "dest": "server/index.js"
         },
         {
+            "src": "/health",
+            "dest": "server/index.js"
+        },
+        {
             "src": "/(.*)",
             "dest": "client/build/$1"
         }
