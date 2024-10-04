@@ -15,6 +15,10 @@ const root = ReactDOM.createRoot(
     document.getElementById('root')
 );
 
+// Set up the backend URLs
+const httpUri = process.env.REACT_APP_GRAPHQL_HTTP_URI || 'http://localhost:3000/graphql';
+const wsUri = process.env.REACT_APP_GRAPHQL_WS_URI || 'ws://localhost:3000/graphql';
+
 // Create an auth link that adds the token to the headers
 const authLink = setContext((_, { headers }) => {
   const token = localStorage.getItem('token');
@@ -27,14 +31,14 @@ const authLink = setContext((_, { headers }) => {
 });
 
 const httpLink = new HttpLink({
-    uri: 'http://localhost:5000/graphql'
+    uri: httpUri
 });
 
 // Combine the auth link with the http link
 const httpAuthLink = authLink.concat(httpLink);
 
 const wsLink = new GraphQLWsLink(createClient({
-    url: 'ws://localhost:5000/graphql',
+    url: wsUri,
     connectionParams: () => {
         const token = localStorage.getItem('token');
         return {

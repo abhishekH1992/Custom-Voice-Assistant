@@ -11,13 +11,12 @@ import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
 import { Toaster } from "react-hot-toast"
 import Feedback from './pages/Feedback';
+import SavedChats from './pages/SavedChats';
 
 const ProtectedRoute = ({ children }) => {
     const { loading, error, data } = useQuery(ME_QUERY);
-  
     if (loading) return <div>Loading...</div>;
     if (error) {
-        console.error('Authentication error:', error);
         localStorage.removeItem('token');
         return <Navigate to="/login" />;
     }
@@ -25,15 +24,29 @@ const ProtectedRoute = ({ children }) => {
     return React.cloneElement(children, { userData: data });
 }
 
+const AuthRoute = ({ children }) => {
+    const { loading, error, data } = useQuery(ME_QUERY);
+    if (loading) return <div>Loading...</div>;
+    if (!error && data) {
+        // User is authenticated, redirect to home
+        return <Navigate to="/" replace />;
+    }
+    return children;
+}
+
 function App() {
     const location = useLocation();
     const isTemplatePage = location.pathname.startsWith('/template/');
     const isAuthPage = location.pathname === '/login' || location.pathname === '/register';
+    const { loading, error, data: userData } = useQuery(ME_QUERY);
+
+    if (loading) return <div>Loading...</div>;
+    if (error && !isAuthPage) return <Navigate to="/login" />;
 
     return (
         <div className="flex h-screen overflow-y-hidden scrollbar-hide">
             {!isAuthPage && (
-                <SideNav>
+                <SideNav userData={userData}>
                     <SidebarItem icon={<AudioLines size={20} />} text="Voice Chat" to="/" active/>
                     <SidebarItem icon={<SaveAllIcon size={20} />} text="Saved Chat" to="/saved-chats" />
                 </SideNav>
@@ -41,11 +54,24 @@ function App() {
             <main className={`flex-1 flex flex-col ${isAuthPage ? 'w-full' : ''}`}>
                 <div className={`flex-1 ${isTemplatePage ? '' : 'overflow-y-auto scrollbar-hide'}`}>
                     <Routes>
-                        <Route path='/login' element={<Login />} />
-                        <Route path='/register' element={<Register />} />
+                        <Route path='/login' element={
+                            <AuthRoute>
+                                <Login />
+                            </AuthRoute>
+                        } />
+                        <Route path='/register' element={
+                            <AuthRoute>
+                                <Register />
+                            </AuthRoute>
+                        } />
                         <Route path='/' element={
                             <ProtectedRoute>
                                 <TemplateList />
+                            </ProtectedRoute>
+                        } />
+                        <Route path='/saved-chats' element={
+                            <ProtectedRoute>
+                                <SavedChats />
                             </ProtectedRoute>
                         } />
                         <Route path='/template/:templateSlug' element={

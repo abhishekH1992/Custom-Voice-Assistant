@@ -1,13 +1,10 @@
 {
     "development": {
         "username": "root",
-        "password": "root",
+        "password": "",
         "database": "akoplus",
         "host": "localhost",
         "dialect": "mysql",
-        "dialectOptions": {
-            "socketPath" : "/Applications/MAMP/tmp/mysql/mysql.sock"
-        },
         "port": 3306
     },
     "test": {
@@ -18,10 +15,22 @@
         "dialect": "mysql"
     },
     "production": {
-        "username": "your_mysql_username",
-        "password": "your_mysql_password",
-        "database": "your_production_database_name",
-        "host": "127.0.0.1",
-        "dialect": "mysql"
+        "username": "akoplusco_node_user",
+        "password": "gb0mxf0(jZ6w",
+        "database": "akoplusco_node",
+        "host": "node56.myfcloudau.com:2083",
+        "dialect": "mysql",
+        "dialectOptions": {
+            "ssl": {
+                "require": true,
+                "rejectUnauthorized": false
+            }
+        },
+        "pool": {
+            "max": 5,
+            "min": 0,
+            "acquire": 30000,
+            "idle": 10000
+        }
     }
 }

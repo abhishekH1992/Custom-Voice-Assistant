@@ -4,6 +4,6 @@ package-lock.json
 /client/package-lock.json
 /client_new
 
-/server/temp/
+/server/temp/*
 
 .env

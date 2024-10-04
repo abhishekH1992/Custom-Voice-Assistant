@@ -1,10 +1,16 @@
 const { Voice } = require('../models');
+const { getRedisCached, addRedisCached } = require('../utils/redis.util');
 
 const voicesResolver = {
     Query: {
         voices: async () => {
+            const cacheKey = `voices:all`;
             try {
-                const data = await Voice.findAll();
+                let data = await getRedisCached(cacheKey);
+                if(!data) {
+                    data = await Voice.findAll();
+                    await addRedisCached(cacheKeyActive, data);
+                }
                 return data;
             } catch (error) {
                 console.error('Error fetching voices:', error);

@@ -42,6 +42,9 @@ module.exports = {
             },
             spacing: {
                 940: '940px'
+            },
+            animation: {
+                'spin-slow': 'spin 3s linear infinite',
             }
         },
     },

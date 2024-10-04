@@ -1,52 +1,251 @@
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { ChartLine } from 'lucide-react';
+import { useMemo } from 'react';
+import { Card, CardBody } from "@nextui-org/react";
+import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, BarElement, Title, Tooltip, Legend, ArcElement } from 'chart.js';
+import { Chart } from 'react-chartjs-2';
 import Sentiment from 'sentiment';
+import { TEMPLATE_SUCCESS, TEMPLATE_DANGER, TEMPLATE_WARNING } from '../../../constant/colors';
+
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, Title, Tooltip, Legend, ArcElement);
 
 const sentiment = new Sentiment();
 
 const SentimentAnalysis = ({ data }) => {
-    const analyzeSentiment = (messages) => {
-        return messages.map((message, index) => {
+    const analyzeSentiment = useMemo(() => {
+        return data.map((message, index) => {
             const analysis = sentiment.analyze(message.content);
             return {
                 index: index + 1,
                 sentiment: analysis.comparative,
                 role: message.role,
-                content: message.content
+                content: message.content,
+                words: analysis.words.length,
+                score: analysis.score,
+                positive: analysis.positive.length,
+                negative: analysis.negative.length,
+                tokens: analysis.tokens,
             };
         });
+    }, [data]);
+
+    const getSentimentColor = (score) => {
+        if (score > 0.5) return TEMPLATE_SUCCESS;
+        if (score < -0.5) return TEMPLATE_DANGER;
+        return TEMPLATE_WARNING;
     };
 
-    const sentimentData = analyzeSentiment(data);
+    const combinedChartData = {
+        labels: analyzeSentiment.map(item => item.index),
+        datasets: [
+            {
+                type: 'line',
+                label: 'Sentiment',
+                borderColor: TEMPLATE_SUCCESS,
+                borderWidth: 2,
+                fill: false,
+                data: analyzeSentiment.map(item => item.sentiment),
+                yAxisID: 'y-axis-sentiment',
+            },
+            {
+                type: 'bar',
+                label: 'Word Count',
+                backgroundColor: TEMPLATE_WARNING,
+                data: analyzeSentiment.map(item => item.words),
+                yAxisID: 'y-axis-wordcount',
+            }
+        ]
+    };
+
+    const combinedChartOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: {
+            mode: 'index',
+            intersect: false,
+        },
+        stacked: false,
+        plugins: {
+            tooltip: {
+                mode: 'index',
+                intersect: false,
+                callbacks: {
+                    afterBody: (tooltipItems) => {
+                        const dataIndex = tooltipItems[0].dataIndex;
+                        const dataPoint = analyzeSentiment[dataIndex];
+                        return [
+                            `Role: ${dataPoint.role.toUpperCase()}`,
+                            `Content: ${dataPoint.content.substring(0, 50)}...`,
+                            `Positive Words: ${dataPoint.positive}`,
+                            `Negative Words: ${dataPoint.negative}`,
+                            `Overall Score: ${dataPoint.score}`
+                        ];
+                    }
+                }
+            }
+        },
+        scales: {
+            x: {
+                title: { display: true, text: 'Message Number' }
+            },
+            'y-axis-sentiment': {
+                type: 'linear',
+                display: true,
+                position: 'left',
+                title: { display: true, text: 'Sentiment Score' },
+                min: -1,
+                max: 1,
+            },
+            'y-axis-wordcount': {
+                type: 'linear',
+                display: true,
+                position: 'right',
+                title: { display: true, text: 'Word Count' },
+                min: 0,
+                grid: { drawOnChartArea: false }
+            },
+        }
+    };
+
+    const sentimentDistribution = useMemo(() => {
+        const distribution = { Positive: 0, Neutral: 0, Negative: 0 };
+        analyzeSentiment.forEach(item => {
+            if (item.sentiment > 0.5) distribution.Positive++;
+            else if (item.sentiment < -0.5) distribution.Negative++;
+            else distribution.Neutral++;
+        });
+        return distribution;
+    }, [analyzeSentiment]);
+
+    const doughnutChartData = {
+        labels: ['Positive', 'Neutral', 'Negative'],
+        datasets: [
+            {
+                data: [sentimentDistribution.Positive, sentimentDistribution.Neutral, sentimentDistribution.Negative],
+                backgroundColor: [TEMPLATE_SUCCESS, TEMPLATE_WARNING, TEMPLATE_DANGER],
+            },
+        ],
+    };
+
+    const doughnutChartOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: { position: 'top' },
+            title: {
+                display: true,
+                text: 'Sentiment Distribution',
+                font: { size: 18 }
+            }
+        },
+        cutout: '70%',
+    };
+
+    const positiveNegativeChartData = {
+        labels: analyzeSentiment.map(item => item.index),
+        datasets: [
+            {
+                type: 'bar',
+                label: 'Positive Words',
+                backgroundColor: TEMPLATE_SUCCESS,
+                data: analyzeSentiment.map(item => item.positive),
+            },
+            {
+                type: 'bar',
+                label: 'Negative Words',
+                backgroundColor: TEMPLATE_DANGER,
+                data: analyzeSentiment.map(item => item.negative),
+            }
+        ]
+    };
+
+    const positiveNegativeChartOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            tooltip: {
+                mode: 'index',
+                intersect: false,
+            }
+        },
+        scales: {
+            x: {
+                stacked: true,
+                title: { display: true, text: 'Message Number' }
+            },
+            y: {
+                stacked: true,
+                title: { display: true, text: 'Word Count' }
+            }
+        }
+    };
+
+    const responsiveChartOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                position: 'top',
+                labels: {
+                    boxWidth: 10,
+                    font: {
+                        size: 10
+                    }
+                }
+            },
+            title: {
+                font: {
+                    size: 14
+                }
+            }
+        },
+        scales: {
+            x: {
+                ticks: {
+                    font: {
+                        size: 10
+                    }
+                }
+            },
+            y: {
+                ticks: {
+                    font: {
+                        size: 10
+                    }
+                }
+            }
+        }
+    };
+
+    // Merge responsive options with existing options
+    const mergeOptions = (baseOptions) => ({
+        ...baseOptions,
+        ...responsiveChartOptions,
+        scales: {
+            ...baseOptions.scales,
+            ...responsiveChartOptions.scales
+        }
+    });
+
+    const responsiveCombinedChartOptions = mergeOptions(combinedChartOptions);
+    const responsivePositiveNegativeChartOptions = mergeOptions(positiveNegativeChartOptions);
 
     return (
-        <div>
-            <div className="text-md font-semibold mb-4 flex gap-2 text-center justify-center"><ChartLine /> Sentiment Analysis</div>
-            <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={sentimentData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="index" label={{ value: 'Message Number', position: 'insideBottom', offset: -10 }} />
-                    <YAxis domain={[-1, 1]} label={{ value: 'Sentiment Score', angle: -90, position: 'insideLeft' }} />
-                    <Tooltip 
-                        content={({ payload, label }) => {
-                            if (payload && payload.length) {
-                                const data = payload[0].payload;
-                                return (
-                                    <div className="bg-white border p-2">
-                                        <p>Message: {label}</p>
-                                        <p>Role: {data.role.toUpperCase()}</p>
-                                        <p>Sentiment: {data.sentiment.toFixed(2)}</p>
-                                        <p>Content: {data.content.substring(0, 50)}...</p>
-                                    </div>
-                                );
-                            }
-                            return null;
-                        }}
-                    />
-                    <Legend />
-                    <Line type="monotone" dataKey="Sentiment" stroke="#8884d8" activeDot={{ r: 8 }} />
-                </LineChart>
-            </ResponsiveContainer>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 lg:gap-8">
+            <Card className="p-2 sm:p-4">
+                <CardBody>
+                    <h3 className="text-base sm:text-lg font-semibold mb-2 sm:mb-4 text-gray-800">Sentiment and Word Count Analysis</h3>
+                    <div className="h-64 sm:h-80 lg:h-96">
+                        <Chart type='bar' data={combinedChartData} options={responsiveCombinedChartOptions} />
+                    </div>
+                </CardBody>
+            </Card>
+            <Card className="p-2 sm:p-4">
+                <CardBody>
+                    <h3 className="text-base sm:text-lg font-semibold mb-2 sm:mb-4 text-gray-800">Positive vs Negative Words per Message</h3>
+                    <div className="h-64 sm:h-80 lg:h-96">
+                        <Chart type='bar' data={positiveNegativeChartData} options={responsivePositiveNegativeChartOptions} />
+                    </div>
+                </CardBody>
+            </Card>
         </div>
     );
 };

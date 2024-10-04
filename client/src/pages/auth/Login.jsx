@@ -18,6 +18,8 @@ const Login = () => {
     const [login, { loading }] = useMutation(LOGIN_MUTATION, {
         onCompleted: ({ login }) => {
             localStorage.setItem('token', login.token);
+            console.log(login.token);
+            toast.success('Login successful!');
             navigate('/');
         },
         onError: (error) => {

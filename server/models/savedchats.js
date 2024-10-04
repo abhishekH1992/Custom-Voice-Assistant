@@ -1,7 +1,6 @@
 'use strict';
-const {
-  Model
-} = require('sequelize');
+const { Model } = require('sequelize');
+
 module.exports = (sequelize, DataTypes) => {
   class SavedChats extends Model {
     /**
@@ -11,16 +10,25 @@ module.exports = (sequelize, DataTypes) => {
      */
     static associate(models) {
       // define association here
+      SavedChats.belongsTo(models.Template, {
+        foreignKey: 'templateId',
+        as: 'template'
+      });
     }
   }
+  
   SavedChats.init({
     userId: DataTypes.INTEGER,
     templateId: DataTypes.INTEGER,
     chats: DataTypes.JSONB,
-    name: DataTypes.STRING
+    name: DataTypes.STRING,
+    feedback: DataTypes.JSONB,
+    table: DataTypes.JSONB,
+    feedbackLastGeneratedAt: DataTypes.DATE,
   }, {
     sequelize,
     modelName: 'SavedChats',
   });
+  
   return SavedChats;
 };
