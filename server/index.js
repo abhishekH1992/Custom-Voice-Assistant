@@ -1,6 +1,7 @@
 const express = require('express');
 const { ApolloServer } = require('@apollo/server');
 const { expressMiddleware } = require('@apollo/server/express4');
+const { makeExecutableSchema } = require('@graphql-tools/schema');
 const cors = require('cors');
 const session = require('express-session');
 const authMiddleware = require('./middleware/auth.js');
@@ -56,7 +57,7 @@ async function startServer() {
     await server.start();
 
     app.use(
-        '/graphql',
+        '/api/graphql',
         cors({
             origin: process.env.CLIENT_URL || 'https://akoplus.vercel.app',
             credentials: true,
@@ -72,19 +73,22 @@ async function startServer() {
     );
 
     // Health check route
-    app.get('/health', (req, res) => {
+    app.get('/api/health', (req, res) => {
         res.status(200).send('OK');
     });
 
-    // Catch-all route to handle client-side routing
-    // app.get('*', (req, res) => {
-    //     res.sendFile(path.join(__dirname, '../client/build', 'index.html'));
-    // });
-
-    // Export the Express API
-    module.exports = app;
+    return app;
 }
 
-startServer().catch(error => {
-    console.error('Failed to start the server:', error);
-});
+// For local development
+if (process.env.NODE_ENV !== 'production') {
+    const PORT = process.env.PORT || 5000;
+    startServer().then((app) => {
+        app.listen(PORT, () => {
+            console.log(`Server is running on http://localhost:${PORT}`);
+        });
+    });
+}
+
+// For Vercel
+module.exports = startServer();
