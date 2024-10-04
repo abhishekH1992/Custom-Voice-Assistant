@@ -18,7 +18,19 @@
         "username": "akoplusco_node_user",
         "password": "gb0mxf0(jZ6w",
         "database": "akoplusco_node",
-        "host": "127.0.0.1",
-        "dialect": "mysql"
+        "host": "node56.myfcloudau.com:2083",
+        "dialect": "mysql",
+        "dialectOptions": {
+            "ssl": {
+                "require": true,
+                "rejectUnauthorized": false
+            }
+        },
+        "pool": {
+            "max": 5,
+            "min": 0,
+            "acquire": 30000,
+            "idle": 10000
+        }
     }
 }

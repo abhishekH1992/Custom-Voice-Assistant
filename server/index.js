@@ -7,7 +7,6 @@ const { WebSocketServer } = require('ws');
 const { useServer } = require('graphql-ws/lib/use/ws');
 const { makeExecutableSchema } = require('@graphql-tools/schema');
 const cors = require('cors');
-const path = require('path');
 const session = require('express-session');
 const authMiddleware = require('./middleware/auth.js');
 const dotenv = require('dotenv');
@@ -20,8 +19,11 @@ dotenv.config();
 
 const app = express();
 const httpServer = http.createServer(app);
-const PORT = process.env.PORT || 5000;
 
+const PORT = process.env.PORT || 5000;
+const isProduction = process.env.NODE_ENV === 'production';
+
+// Create the schema
 const schema = makeExecutableSchema({
     typeDefs: mergedTypeDef,
     resolvers: mergedResolver,
@@ -33,15 +35,12 @@ app.use(session({
     resave: false,
     saveUninitialized: false,
     cookie: { 
-        secure: process.env.NODE_ENV === 'production',
+        secure: isProduction,
         sameSite: 'strict'
     }
 }));
 
 app.use(authMiddleware);
-
-// Serve static files from the React app
-app.use(express.static(path.join(__dirname, '../client/build')));
 
 // Authentication function
 const authenticate = async (token) => {
@@ -56,20 +55,26 @@ const authenticate = async (token) => {
     }
 };
 
+// Create and start Apollo Server
 async function startApolloServer() {
-    const wsServer = new WebSocketServer({
-        server: httpServer,
-        path: '/graphql',
-    });
+    let serverCleanup = null;
 
-    const serverCleanup = useServer({
-        schema,
-        context: async (ctx) => {
-            const token = ctx.connectionParams?.authorization || '';
-            const user = await authenticate(token);
-            return { user };
-        },
-    }, wsServer);
+    if (!isProduction) {
+        // Set up WebSocket server for subscriptions in development
+        const wsServer = new WebSocketServer({
+            server: httpServer,
+            path: '/graphql',
+        });
+
+        serverCleanup = useServer({
+            schema,
+            context: async (ctx) => {
+                const token = ctx.connectionParams?.authorization || '';
+                const user = await authenticate(token);
+                return { user };
+            },
+        }, wsServer);
+    }
 
     const server = new ApolloServer({
         schema,
@@ -79,7 +84,9 @@ async function startApolloServer() {
                 async serverWillStart() {
                     return {
                         async drainServer() {
-                            await serverCleanup.dispose();
+                            if (serverCleanup) {
+                                await serverCleanup.dispose();
+                            }
                         },
                     };
                 },
@@ -88,12 +95,12 @@ async function startApolloServer() {
     });
 
     await server.start();
-    
+
     app.use(
         '/graphql',
         cors({
-            origin: process.env.NODE_ENV === 'production' 
-                ? 'https://convo.akoplus.co.nz' 
+            origin: isProduction 
+                ? 'https://your-production-domain.com' 
                 : 'http://localhost:3000',
             credentials: true,
         }),
@@ -107,14 +114,22 @@ async function startApolloServer() {
         })
     );
 
-    // Handle any requests that don't match the ones above
-    app.get('*', (req, res) => {
-        res.sendFile(path.join(__dirname, '../client/build/index.html'));
+    // Health check route
+    app.get('/health', (req, res) => {
+        res.status(200).send('OK');
     });
 
-    await new Promise((resolve) => httpServer.listen({ port: PORT }, resolve));
-    console.log(`🚀 Server ready at https://convo.akoplus.co.nz/graphql`);
-    console.log(`🚀 Subscriptions ready at wss://convo.akoplus.co.nz/graphql`);
+    if (isProduction) {
+        // In production, export the Express API for serverless use
+        module.exports = app;
+    } else {
+        // In development, start the server
+        await new Promise((resolve) => httpServer.listen({ port: PORT }, resolve));
+        console.log(`🚀 Server ready at http://localhost:${PORT}/graphql`);
+        console.log(`🚀 Subscriptions ready at ws://localhost:${PORT}/graphql`);
+    }
 }
 
-startApolloServer();
+startApolloServer().catch(error => {
+    console.error('Failed to start the server:', error);
+});
