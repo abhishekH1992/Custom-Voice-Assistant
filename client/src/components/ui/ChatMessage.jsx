@@ -9,17 +9,10 @@ const ChatMessage = ({ message }) => {
     const getIcon = () => {
         switch (message.role) {
             case 'system':
-                return (
-                    <Flower />
-                );
-            case 'user':
-                return (
-                    <UserRound />
-                );
             case 'assistant':
-                return (
-                    <Flower />
-                );
+                return <Flower />;
+            case 'user':
+                return <UserRound />;
             default:
                 return null;
         }
@@ -40,12 +33,13 @@ const ChatMessage = ({ message }) => {
                                 const match = /language-(\w+)/.exec(className || '')
                                 return !inline && match ? (
                                     <SyntaxHighlighter
-                                        children={String(children).replace(/\n$/, '')}
                                         style={tomorrow}
                                         language={match[1]}
                                         PreTag="div"
                                         {...props}
-                                    />
+                                    >
+                                        {String(children).replace(/\n$/, '')}
+                                    </SyntaxHighlighter>
                                 ) : (
                                     <code className="bg-gray-200 px-1 py-0.5 rounded-sm font-mono text-sm" {...props}>
                                          {children}
@@ -53,13 +47,13 @@ const ChatMessage = ({ message }) => {
                                 )
                             },
                             p: ({node, ...props}) => <p className="my-2" {...props} />,
-                            h1: ({node, ...props}) => <h1 className="text-2xl font-bold my-2" {...props} />,
-                            h2: ({node, ...props}) => <h2 className="text-xl font-bold my-2" {...props} />,
-                            h3: ({node, ...props}) => <h3 className="text-lg font-bold my-2" {...props} />,
+                            h1: ({node, children, ...props}) => children ? <h1 className="text-2xl font-bold my-2" {...props}>{children}</h1> : null,
+                            h2: ({node, children, ...props}) => children ? <h2 className="text-xl font-bold my-2" {...props}>{children}</h2> : null,
+                            h3: ({node, children, ...props}) => children ? <h3 className="text-lg font-bold my-2" {...props}>{children}</h3> : null,
                             ul: ({node, ...props}) => <ul className="list-disc list-inside my-2" {...props} />,
                             ol: ({node, ...props}) => <ol className="list-decimal list-inside my-2" {...props} />,
                             li: ({node, ...props}) => <li className="mb-1" {...props} />,
-                            a: ({node, ...props}) => <a className="text-blue-600 hover:underline" {...props} />,
+                            a: ({node, children, ...props}) => children ? <a className="text-blue-600 hover:underline" {...props}>{children}</a> : null,
                             blockquote: ({node, ...props}) => <blockquote className="border-l-4 border-gray-300 pl-4 italic my-2" {...props} />,
                         }}
                     >
