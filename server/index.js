@@ -58,7 +58,7 @@ async function startServer() {
     app.use(
         '/graphql',
         cors({
-            origin: process.env.CLIENT_URL || 'https://your-app-name.vercel.app',
+            origin: process.env.CLIENT_URL || 'https://akoplus.vercel.app',
             credentials: true,
         }),
         express.json(),
@@ -77,9 +77,9 @@ async function startServer() {
     });
 
     // Catch-all route to handle client-side routing
-    app.get('*', (req, res) => {
-        res.sendFile(path.join(__dirname, '../client/build', 'index.html'));
-    });
+    // app.get('*', (req, res) => {
+    //     res.sendFile(path.join(__dirname, '../client/build', 'index.html'));
+    // });
 
     // Export the Express API
     module.exports = app;
