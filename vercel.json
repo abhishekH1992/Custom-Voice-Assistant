@@ -26,15 +26,18 @@
         }
     ],
     "env": {
-        "CHATGPT_SECRET": "@chatgpt_secret",
-        "JWT_EXPIRATION": "@jwt_expiration",
-        "JWT_SECRET": "@jwt_secret",
-        "SESSION_SECRET": "@session_secret",
-        "USER_TRANSCRIBE_PROMPT": "@user_transcribe_prompt",
-        "CACHE_LIFE_SHORT": "@cache_life_short",
-        "CACHE_LIFE_MEDIUM": "@cache_life_medium",
-        "CACHE_LIFE_LONG": "@cache_life_long",
-        "REDIS_URL": "@redis_url",
-        "DATABASE_URL": "@database_url"
+        "CHATGPT_SECRET": "@CHATGPT_SECRET",
+        "AUDIO_STREAM_CHUNK_SIZE": "@AUDIO_STREAM_CHUNK_SIZE",
+        "JWT_EXPIRATION": "@JWT_EXPIRATION",
+        "JWT_SECRET": "@JWT_SECRET",
+        "SESSION_SECRET": "@SESSION_SECRET",
+        "USER_TRANSCRIBE_PROMPT": "@USER_TRANSCRIBE_PROMPT",
+        "CACHE_LIFE_SHORT": "@CACHE_LIFE_SHORT",
+        "CACHE_LIFE_MEDIUM": "@CACHE_LIFE_MEDIUM",
+        "CACHE_LIFE_LONG": "@CACHE_LIFE_LONG",
+        "REDIS_URL": "@REDIS_URL",
+        "DATABASE_URL": "@DATABASE_URL",
+        "REACT_APP_GRAPHQL_HTTP_URI": "@REACT_APP_GRAPHQL_HTTP_URI",
+        "REACT_APP_GRAPHQL_WS_URI": "@REACT_APP_GRAPHQL_WS_URI"
     }
 }
