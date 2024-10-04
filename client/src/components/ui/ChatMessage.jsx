@@ -9,6 +9,7 @@ const ChatMessage = ({ message }) => {
     const getIcon = () => {
         switch (message.role) {
             case 'system':
+                return <Flower />;
             case 'assistant':
                 return <Flower />;
             case 'user':
