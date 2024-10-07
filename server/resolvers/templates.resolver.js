@@ -1,5 +1,5 @@
 const { Template } = require('../models');
-const { getRedisCached, addRedisCached } = require('../utils/redis.util');
+// const { getRedisCached, addRedisCached } = require('../utils/redis.util');
 
 const templatesResolver = {
     Query: {
@@ -8,22 +8,22 @@ const templatesResolver = {
             const cacheKey = `allTemplates:all`;
             try {
                 if(isActive) {
-                    let data = await getRedisCached(cacheKeyActive);
-                    if(!data) {
-                        data = await Template.findAll({
+                    // let data = await getRedisCached(cacheKeyActive);
+                    // if(!data) {
+                        let data = await Template.findAll({
                             where: {
                                 isActive: true
                             }
                         });
-                        await addRedisCached(cacheKeyActive, data);
-                    }
+                        // await addRedisCached(cacheKeyActive, data);
+                    // }
                     return data;
                 } else {
-                    let data = await getRedisCached(cacheKey);
-                    if(!data) {
-                        data = await Template.findAll();
-                        await addRedisCached(cacheKey, data);
-                    }
+                    // let data = await getRedisCached(cacheKey);
+                    // if(!data) {
+                        let data = await Template.findAll();
+                        // await addRedisCached(cacheKey, data);
+                    // }
                     return data;
                 }
             } catch (error) {
@@ -34,16 +34,16 @@ const templatesResolver = {
         templateBySlug: async(_, {slug}) => {
             const cacheKey = `templateBySlug:${slug}`;
             try {
-                let data = await getRedisCached(cacheKey);
-                if(!data) {
-                    data = await Template.findOne({
+                // let data = await getRedisCached(cacheKey);
+                // if(!data) {
+                    let data = await Template.findOne({
                         where: {
                             slug: slug,
                             isActive: true,
                         }
                     });
-                    await addRedisCached(cacheKey, data);
-                }
+                    // await addRedisCached(cacheKey, data);
+                // }
                 return data;
             } catch (error) {
                 console.error('Error fetching template by id:', error);
