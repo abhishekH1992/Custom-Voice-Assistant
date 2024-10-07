@@ -4,6 +4,7 @@ const { expressMiddleware } = require('@apollo/server/express4');
 const { makeExecutableSchema } = require('@graphql-tools/schema');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
+const path = require('path');
 const { User } = require('./models');
 const mergedTypeDef = require('./typeDefs/index.js');
 const mergedResolver = require('./resolvers/index.js');
@@ -60,9 +61,12 @@ async function startServer() {
             res.status(200).send('OK');
         });
 
-        // Handle all other routes
-        app.all('*', (req, res) => {
-            res.status(200).json({ message: 'Server is running' });
+        // Serve static files from the React app
+        app.use(express.static(path.join(__dirname, '../client/build')));
+
+        // Handle all other routes by serving the React app
+        app.get('*', (req, res) => {
+            res.sendFile(path.join(__dirname, '../client/build', 'index.html'));
         });
 
         return app;
