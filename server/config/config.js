@@ -18,7 +18,7 @@ module.exports = {
         "dialect": "mysql"
     },
     "production": {
-        "use_env_variable": "mysql://akoplusco_node_user:gb0mxf0(jZ6w@node56.myfcloudau.com:2083/akoplusco_node",
+        "use_env_variable": "mysql://akoplusco_node_user:gb0mxf0(jZ6w@node56.myfcloudau.com:3306/akoplusco_node",
         "dialect": "mysql",
         "dialectOptions": {
             "ssl": {
