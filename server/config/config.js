@@ -20,6 +20,7 @@ module.exports = {
     "production": {
         "use_env_variable": 'DATABASE_URL',
         "dialect": "mysql",
+        "dialectModule": require('mysql2'),
         "dialectOptions": {
             "ssl": {
                 "require": true,
