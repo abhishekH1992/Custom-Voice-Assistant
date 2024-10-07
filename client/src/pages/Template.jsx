@@ -118,7 +118,7 @@ const Template = () => {
         scrollToBottom();
     }, [messages, currentStreamedMessage]);
 
-    useSubscription(MESSAGE_SUBSCRIPTION, {
+    const { error } = useSubscription(MESSAGE_SUBSCRIPTION, {
         variables: { templateId: data?.templateBySlug?.id },
         onSubscriptionData: ({ subscriptionData }) => {
             const { role, content: newContent } = subscriptionData?.data?.messageStreamed;
