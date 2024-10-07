@@ -57,7 +57,7 @@ async function startServer() {
     await server.start();
 
     app.use(
-        '/api/graphql',
+        '/graphql',
         cors({
             origin: process.env.CLIENT_URL || 'https://akoplus.vercel.app',
             credentials: true,
@@ -73,7 +73,7 @@ async function startServer() {
     );
 
     // Health check route
-    app.get('/api/health', (req, res) => {
+    app.get('/health', (req, res) => {
         res.status(200).send('OK');
     });
 
