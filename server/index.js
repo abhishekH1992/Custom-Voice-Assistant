@@ -3,15 +3,10 @@ const { ApolloServer } = require('@apollo/server');
 const { expressMiddleware } = require('@apollo/server/express4');
 const { makeExecutableSchema } = require('@graphql-tools/schema');
 const cors = require('cors');
-const session = require('express-session');
-const authMiddleware = require('./middleware/auth.js');
-const dotenv = require('dotenv');
 const jwt = require('jsonwebtoken');
 const { User } = require('./models');
 const mergedTypeDef = require('./typeDefs/index.js');
 const mergedResolver = require('./resolvers/index.js');
-
-dotenv.config();
 
 const app = express();
 
@@ -20,19 +15,6 @@ const schema = makeExecutableSchema({
     typeDefs: mergedTypeDef,
     resolvers: mergedResolver,
 });
-
-// Session middleware
-app.use(session({
-    secret: process.env.SESSION_SECRET,
-    resave: false,
-    saveUninitialized: false,
-    cookie: { 
-        secure: true,
-        sameSite: 'strict'
-    }
-}));
-
-app.use(authMiddleware);
 
 // Authentication function
 const authenticate = async (token) => {
@@ -54,41 +36,44 @@ const server = new ApolloServer({
 
 // Start the server
 async function startServer() {
-    await server.start();
+    try {
+        await server.start();
 
-    app.use(
-        '/graphql',
-        cors({
-            origin: process.env.CLIENT_URL || 'https://akoplus.vercel.app',
-            credentials: true,
-        }),
-        express.json(),
-        expressMiddleware(server, {
-            context: async ({ req }) => {
-                const token = req.headers.authorization || '';
-                const user = await authenticate(token);
-                return { user };
-            },
-        })
-    );
+        app.use(
+            '/graphql',
+            cors({
+                origin: process.env.CLIENT_URL || 'https://akoplus.vercel.app',
+                credentials: true,
+            }),
+            express.json(),
+            expressMiddleware(server, {
+                context: async ({ req }) => {
+                    const token = req.headers.authorization || '';
+                    const user = await authenticate(token);
+                    return { user };
+                },
+            })
+        );
 
-    // Health check route
-    app.get('/health', (req, res) => {
-        res.status(200).send('OK');
-    });
-
-    return app;
-}
-
-// For local development
-if (process.env.NODE_ENV !== 'production') {
-    const PORT = process.env.PORT || 5000;
-    startServer().then((app) => {
-        app.listen(PORT, () => {
-            console.log(`Server is running on http://localhost:${PORT}`);
+        // Health check route
+        app.get('/health', (req, res) => {
+            res.status(200).send('OK');
         });
-    });
+
+        // Handle all other routes
+        app.all('*', (req, res) => {
+            res.status(200).json({ message: 'Server is running' });
+        });
+
+        return app;
+    } catch (error) {
+        console.error('Failed to start the server:', error);
+        throw error;
+    }
 }
 
 // For Vercel
-module.exports = startServer();
+module.exports = startServer().catch(error => {
+    console.error('Unhandled error during server startup:', error);
+    process.exit(1);
+});
