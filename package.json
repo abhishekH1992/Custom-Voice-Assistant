@@ -2,7 +2,7 @@
   "name": "akoplus-react",
   "version": "1.0.0",
   "description": "ReactAPP",
-  "main": "index.js",
+  "main": "server/index.js",
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js"
