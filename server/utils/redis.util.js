@@ -7,10 +7,12 @@ const DOMAIN = 'convo.akoplus.co.nz';
 const NAMESPACE = `${DOMAIN}:`;
 const isProduction = process.env.NODE_ENV === 'production';
 
-const createRedisClient = () => {
+let redisClient = null;
+
+const createRedisClient = async () => {
     if (!process.env.REDIS_URL && isProduction) {
         console.error('REDIS_URL is not set in production environment');
-        process.exit(1);
+        return null;
     }
 
     const client = Redis.createClient({
@@ -27,26 +29,29 @@ const createRedisClient = () => {
     client.on('connect', () => console.log('Redis Client Connected'));
     client.on('reconnecting', () => console.log('Redis Client Reconnecting'));
 
-    return client;
-};
-
-const redisClient = createRedisClient();
-
-(async () => {
     try {
-        await redisClient.connect();
+        await client.connect();
+        return client;
     } catch (error) {
         console.error('Failed to connect to Redis:', error);
-        if (isProduction) {
-            process.exit(1);
-        }
+        return null;
     }
-})();
+};
+
+const getRedisClient = async () => {
+    if (!redisClient) {
+        redisClient = await createRedisClient();
+    }
+    return redisClient;
+};
 
 const getRedisCached = async (cacheKey) => {
+    const client = await getRedisClient();
+    if (!client) return null;
+
     try {
         const namespacedKey = NAMESPACE + cacheKey;
-        const cachedData = await redisClient.get(namespacedKey);
+        const cachedData = await client.get(namespacedKey);
         return cachedData ? JSON.parse(cachedData) : null;
     } catch (error) {
         console.error('Error in getRedisCached:', error);
@@ -55,9 +60,12 @@ const getRedisCached = async (cacheKey) => {
 };
 
 const addRedisCached = async (cacheKey, data, lifetime = process.env.CACHE_LIFE_LONG) => {
+    const client = await getRedisClient();
+    if (!client) return false;
+
     try {
         const namespacedKey = NAMESPACE + cacheKey;
-        await redisClient.set(namespacedKey, JSON.stringify(data), {
+        await client.set(namespacedKey, JSON.stringify(data), {
             EX: parseInt(lifetime, 10) || 3600 // Default to 1 hour if parsing fails
         });
         return true;
@@ -68,11 +76,14 @@ const addRedisCached = async (cacheKey, data, lifetime = process.env.CACHE_LIFE_
 };
 
 const clearCache = async (pattern) => {
+    const client = await getRedisClient();
+    if (!client) return false;
+
     try {
         const namespacedPattern = NAMESPACE + pattern;
-        const keys = await redisClient.keys(namespacedPattern);
+        const keys = await client.keys(namespacedPattern);
         if (keys.length > 0) {
-            await redisClient.del(keys);
+            await client.del(keys);
         }
         return true;
     } catch (error) {
@@ -82,10 +93,13 @@ const clearCache = async (pattern) => {
 };
 
 const clearAllCache = async () => {
+    const client = await getRedisClient();
+    if (!client) return false;
+
     try {
-        const keys = await redisClient.keys(NAMESPACE + '*');
+        const keys = await client.keys(NAMESPACE + '*');
         if (keys.length > 0) {
-            await redisClient.del(keys);
+            await client.del(keys);
         }
         return true;
     } catch (error) {
