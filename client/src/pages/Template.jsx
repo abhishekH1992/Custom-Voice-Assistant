@@ -107,7 +107,7 @@ const Template = () => {
         scrollToBottom();
     }, [messages, currentStreamedMessage]);
 
-    useSubscription(MESSAGE_SUBSCRIPTION, {
+    const { error } = useSubscription(MESSAGE_SUBSCRIPTION, {
         variables: { templateId: data?.templateBySlug?.id },
         onSubscriptionData: ({ subscriptionData }) => {
             const { role, content: newContent } = subscriptionData?.data?.messageStreamed;
@@ -131,12 +131,15 @@ const Template = () => {
     });
 
     useEffect(() => {
+        if(error) {
+            console.log(error);
+        }
         if (!isStreamingRef.current && !isEmpty(currentStreamedMessage)) {
             setMessages(prev => [...prev, { role: 'system', content: currentStreamedMessage.content }]);
             setCurrentStreamedMessage('');
             streamedMessageRef.current = '';
         }
-    }, [currentStreamedMessage]);
+    }, [currentStreamedMessage, error]);
 
     useSubscription(USER_SUBSCRIPTION, {
         variables: { templateId: data?.templateBySlug?.id },

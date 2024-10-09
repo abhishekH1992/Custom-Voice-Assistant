@@ -18,9 +18,9 @@
         "dialect": "mysql"
     },
     "production": {
-        "username": "your_mysql_username",
-        "password": "your_mysql_password",
-        "database": "your_production_database_name",
+        "username": "akoplusco_convo",
+        "password": "vOm)RMjzT,Uj",
+        "database": "akoplusco_convo",
         "host": "127.0.0.1",
         "dialect": "mysql"
     }
