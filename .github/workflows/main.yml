@@ -14,22 +14,31 @@ jobs:
     - name: Use Node.js
       uses: actions/setup-node@v2
       with:
-        node-version: '14'
+        node-version: '18'  # Updated to a more recent LTS version
 
     - name: Clear npm cache
       run: npm cache clean --force
 
-    - name: Install dependencies (root and client)
-      run: npm run install-all
+    - name: Install dependencies (root)
+      run: npm install
+      
+    - name: Install dependencies (client)
+      run: |
+        cd client
+        npm install
       
     - name: List installed packages (root)
       run: npm list --depth=0
       
     - name: List installed packages (client)
-      run: npm list --depth=0 --prefix client
+      run: |
+        cd client
+        npm list --depth=0
 
     - name: Build React app
-      run: npm run build-client
+      run: |
+        cd client
+        npm run build
       env:
         CI: false
 
