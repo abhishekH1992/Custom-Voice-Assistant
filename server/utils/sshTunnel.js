@@ -50,7 +50,24 @@ function createTunnel() {
       });
 
       server.on('error', (error) => {
+        console.error('--------------------------');
         console.error('SSH tunnel error:', error);
+        console.error('Error name:', error.name);
+        console.error('Error message:', error.message);
+        console.error('Error stack:', error.stack);
+        console.error('--------------------------');
+        
+        // Log connection details (be careful not to log sensitive information)
+        console.error('Connection details:', {
+          host: tunnelConfig.host,
+          port: tunnelConfig.port,
+          username: tunnelConfig.username,
+          dstHost: tunnelConfig.dstHost,
+          dstPort: tunnelConfig.dstPort,
+          localHost: tunnelConfig.localHost,
+          localPort: tunnelConfig.localPort
+        });
+      
         reject(error);
       });
 
