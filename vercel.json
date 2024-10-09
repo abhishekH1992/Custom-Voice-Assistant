@@ -9,11 +9,6 @@
       "src": "client/package.json",
       "use": "@vercel/static-build",
       "config": { "distDir": "build" }
-    },
-    {
-      "env": {
-        "SSH_PRIVATE_KEY": "@ssh_private_key"
-      }
     }
   ],
   "routes": [
