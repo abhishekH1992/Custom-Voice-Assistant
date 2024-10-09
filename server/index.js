@@ -27,7 +27,6 @@ const schema = makeExecutableSchema({
     resolvers: mergedResolver,
 });
 
-// Session middleware
 app.use(session({
     secret: process.env.SESSION_SECRET,
     resave: false,
@@ -40,10 +39,8 @@ app.use(session({
 
 app.use(authMiddleware);
 
-// Serve static files from the React app
 app.use(express.static(path.join(__dirname, '../client/build')));
 
-// Authentication function
 const authenticate = async (token) => {
     if (!token) return null;
     try {
@@ -107,14 +104,13 @@ async function startApolloServer() {
         })
     );
 
-    // Handle any requests that don't match the ones above
     app.get('*', (req, res) => {
         res.sendFile(path.join(__dirname, '../client/build/index.html'));
     });
 
     await new Promise((resolve) => httpServer.listen({ port: PORT }, resolve));
-    console.log(`🚀 Server ready at https://convo.akoplus.co.nz/graphql`);
-    console.log(`🚀 Subscriptions ready at wss://convo.akoplus.co.nz/graphql`);
+    console.log(`🚀 Server ready at ${process.env.NODE_ENV === 'production' ? 'https://convo.akoplus.co.nz/graphql' : `http://localhost:${PORT}/graphql`}`);
+    console.log(`🚀 Subscriptions ready at ${process.env.NODE_ENV === 'production' ? 'wss://convo.akoplus.co.nz/graphql' : `ws://localhost:${PORT}/graphql`}`);
 }
 
 startApolloServer();

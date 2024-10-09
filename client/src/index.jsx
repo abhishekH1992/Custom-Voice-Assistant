@@ -15,7 +15,6 @@ const root = ReactDOM.createRoot(
     document.getElementById('root')
 );
 
-// Create an auth link that adds the token to the headers
 const authLink = setContext((_, { headers }) => {
   const token = localStorage.getItem('token');
   return {
@@ -27,14 +26,17 @@ const authLink = setContext((_, { headers }) => {
 });
 
 const httpLink = new HttpLink({
-    uri: 'http://localhost:5000/graphql'
+    uri: process.env.NODE_ENV === 'production'
+        ? 'https://convo.akoplus.co.nz/graphql'
+        : 'http://localhost:5000/graphql'
 });
 
-// Combine the auth link with the http link
 const httpAuthLink = authLink.concat(httpLink);
 
 const wsLink = new GraphQLWsLink(createClient({
-    url: 'ws://localhost:5000/graphql',
+    url: process.env.NODE_ENV === 'production'
+        ? 'wss://convo.akoplus.co.nz/graphql'
+        : 'ws://localhost:5000/graphql',
     connectionParams: () => {
         const token = localStorage.getItem('token');
         return {
