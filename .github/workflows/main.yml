@@ -14,7 +14,7 @@ jobs:
     - name: Use Node.js
       uses: actions/setup-node@v2
       with:
-        node-version: '18'
+        node-version: '14'
 
     - name: Clear npm cache
       run: npm cache clean --force
@@ -35,15 +35,14 @@ jobs:
       env:
         CI: false
 
-    - name: Debug FTP Connection
+    - name: Install lftp
+      run: sudo apt-get install -y lftp
+
+    - name: Test FTP Connection
       run: |
-        echo "Attempting to ping FTP server IP..."
-        ping -c 4 ${{ secrets.FASTCOMET_FTP_IP }}
-        echo "FTP Username: ${{ secrets.FASTCOMET_FTP_USERNAME }}"
-        echo "FTP Server IP: ${{ secrets.FASTCOMET_FTP_IP }}"
-      env:
-        FASTCOMET_FTP_IP: ${{ secrets.FASTCOMET_FTP_IP }}
-        FASTCOMET_FTP_USERNAME: ${{ secrets.FASTCOMET_FTP_USERNAME }}
+        echo "Attempting to connect to FTP server..."
+        lftp -e "set ssl:verify-certificate no; ls; exit" -u ${{ secrets.FASTCOMET_FTP_USERNAME }},${{ secrets.FASTCOMET_FTP_PASSWORD }} ${{ secrets.FASTCOMET_FTP_IP }}
+      continue-on-error: true
 
     - name: Deploy to FastComet
       uses: SamKirkland/FTP-Deploy-Action@4.0.0
