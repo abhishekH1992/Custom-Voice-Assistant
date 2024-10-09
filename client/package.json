@@ -29,7 +29,6 @@
     "recharts": "^2.12.7",
     "sass": "^1.79.4",
     "sentiment": "^5.0.2",
-    "typescript": "^5.6.3",
     "web-vitals": "^2.1.4"
   },
   "devDependencies": {
