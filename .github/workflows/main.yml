@@ -14,7 +14,7 @@ jobs:
     - name: Use Node.js
       uses: actions/setup-node@v2
       with:
-        node-version: '18'  # Updated to a more recent LTS version
+        node-version: '16'
 
     - name: Clear npm cache
       run: npm cache clean --force
@@ -22,19 +22,17 @@ jobs:
     - name: Install dependencies (root)
       run: npm install
       
+    - name: Update package-lock.json (client)
+      run: |
+        cd client
+        rm -f package-lock.json
+        npm install --package-lock-only
+      
     - name: Install dependencies (client)
       run: |
         cd client
-        npm install
+        npm ci
       
-    - name: List installed packages (root)
-      run: npm list --depth=0
-      
-    - name: List installed packages (client)
-      run: |
-        cd client
-        npm list --depth=0
-
     - name: Build React app
       run: |
         cd client
@@ -42,10 +40,20 @@ jobs:
       env:
         CI: false
 
+    - name: Debug FTP Connection
+      run: |
+        echo "Attempting to ping FTP server IP..."
+        ping -c 4 ${{ secrets.FASTCOMET_FTP_IP }}
+        echo "FTP Username: ${{ secrets.FASTCOMET_FTP_USERNAME }}"
+        echo "FTP Server IP: ${{ secrets.FASTCOMET_FTP_IP }}"
+      env:
+        FASTCOMET_FTP_IP: ${{ secrets.FASTCOMET_FTP_IP }}
+        FASTCOMET_FTP_USERNAME: ${{ secrets.FASTCOMET_FTP_USERNAME }}
+
     - name: Deploy to FastComet
       uses: SamKirkland/FTP-Deploy-Action@4.0.0
       with:
-        server: ${{ secrets.FASTCOMET_FTP_SERVER }}
+        server: ${{ secrets.FASTCOMET_FTP_IP }}
         username: ${{ secrets.FASTCOMET_FTP_USERNAME }}
         password: ${{ secrets.FASTCOMET_FTP_PASSWORD }}
         local-dir: ./
