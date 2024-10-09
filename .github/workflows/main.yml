@@ -16,15 +16,20 @@ jobs:
       with:
         node-version: '14'
 
-    - name: Install dependencies
-      run: |
-        npm ci
-        cd client && npm ci
+    - name: Clear npm cache
+      run: npm cache clean --force
+
+    - name: Install dependencies (root and client)
+      run: npm run install-all
+      
+    - name: List installed packages (root)
+      run: npm list --depth=0
+      
+    - name: List installed packages (client)
+      run: npm list --depth=0 --prefix client
 
     - name: Build React app
-      run: |
-        cd client
-        npm run build
+      run: npm run build-client
       env:
         CI: false
 
