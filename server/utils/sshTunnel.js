@@ -1,5 +1,5 @@
 const tunnel = require('tunnel-ssh');
-const config = require('../config/database');
+const config = require('../config/config');
 
 function createTunnel() {
   return new Promise((resolve, reject) => {
