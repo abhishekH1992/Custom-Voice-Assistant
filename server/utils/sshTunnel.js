@@ -1,11 +1,12 @@
 const tunnel = require('tunnel-ssh');
-const config = require('../config/config');
+const config = require('../config/database');
 
 function createTunnel() {
   return new Promise((resolve, reject) => {
     const sshConfig = {
       ...config.ssh,
-      privateKey: process.env.SSH_PRIVATE_KEY
+      privateKey: process.env.SSH_PRIVATE_KEY,
+      passphrase: process.env.SSH_PASSPHRASE // Add this line
     };
 
     const tunnelConfig = {
@@ -18,6 +19,7 @@ function createTunnel() {
 
     const server = tunnel(tunnelConfig, (error, server) => {
       if (error) {
+        console.error('Tunnel connection failed:', error);
         return reject(error);
       }
       resolve(server);
