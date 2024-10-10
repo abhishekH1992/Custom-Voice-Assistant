@@ -4,7 +4,7 @@ const { textCompletion, transcribeAudio, combinedStream } = require('../utils/co
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-// const { getRedisCached, addRedisCached } = require('../utils/redis.util');
+const { getRedisCached, addRedisCached } = require('../utils/redis.util');
 
 const pubsub = new PubSub();
 let audioChunks = [];
@@ -16,12 +16,12 @@ const conversationResolver = {
         sendMessage: async(_, { templateId, messages }) => {
             const cacheKey = `template:${templateId}`;
             try {
-                // let template = await getRedisCached(cacheKey);
+                let template = await getRedisCached(cacheKey);
 
-                // if(!template) {
-                    let template = await Template.findByPk(templateId);
-                    // await addRedisCached(cacheKey, template);
-                // }
+                if(!template) {
+                    template = await Template.findByPk(templateId);
+                    await addRedisCached(cacheKey, template);
+                }
                 const stream = await textCompletion(
                     template.model,
                     [
@@ -79,11 +79,11 @@ const conversationResolver = {
                 }
                 fs.unlinkSync(filePath);
 
-                // let template = await getRedisCached(cacheKey);
-                // if(!template) {
-                    let template = await Template.findByPk(templateId);
-                    // await addRedisCached(cacheKey, template);
-                // }
+                let template = await getRedisCached(cacheKey);
+                if(!template) {
+                    template = await Template.findByPk(templateId);
+                    await addRedisCached(cacheKey, template);
+                }
                 const stream = await textCompletion(
                     template.model,
                     [

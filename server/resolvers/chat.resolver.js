@@ -1,6 +1,6 @@
 const { SavedChats, Template } = require('../models');
 const { analyzeTranscription, analyzeChat } = require('../utils/conversation.util');
-// const { getRedisCached, addRedisCached } = require('../utils/redis.util');
+const { getRedisCached, addRedisCached } = require('../utils/redis.util');
 
 const chatResolver = {
     Query: {
@@ -28,12 +28,12 @@ const chatResolver = {
                 });
 
                 if(!data.feedbackLastGeneratedAt || new Date(data.feedbackLastGeneratedAt) < new Date(data.updatedAt)) {
-                    // const cacheKey = `template:${data.templateId}`;
-                    // let template = await getRedisCached(cacheKey);
-                    // if(!template) {
-                        let template = await Template.findByPk(data.templateId);
-                        // await addRedisCached(cacheKey, template);
-                    // }
+                    const cacheKey = `template:${data.templateId}`;
+                    let template = await getRedisCached(cacheKey);
+                    if(!template) {
+                        template = await Template.findByPk(data.templateId);
+                        await addRedisCached(cacheKey, template);
+                    }
 
                     const feedback = await analyzeTranscription(template.prompt, template.model, data.chats);
                     const feedbackChat = await analyzeChat(template.prompt, template.model, data.chats);
@@ -95,11 +95,11 @@ const chatResolver = {
                 let savedChat;
                 let message;
 
-                // let template = await getRedisCached(cacheKey);
-                // if(!template) {
-                    let template = await Template.findByPk(templateId);
-                    // await addRedisCached(cacheKey, template);
-                // }
+                let template = await getRedisCached(cacheKey);
+                if(!template) {
+                    template = await Template.findByPk(templateId);
+                    await addRedisCached(cacheKey, template);
+                }
                 if (id) {
                     savedChat = await SavedChats.update(
                         { userId, templateId, chats, name },
