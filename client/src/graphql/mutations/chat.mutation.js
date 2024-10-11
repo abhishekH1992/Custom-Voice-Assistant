@@ -12,6 +12,8 @@ export const SAVE_CHAT = gql`
                 chats {
                     role
                     content
+                    type
+                    timeStamp
                 }
                 name
             }

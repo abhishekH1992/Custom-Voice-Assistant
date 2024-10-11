@@ -1,13 +1,17 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Modal, Input, Button, ModalHeader, ModalBody, ModalFooter, ModalContent } from '@nextui-org/react';
 import { X, SaveAll, Pen } from 'lucide-react';
 
 const SaveChatModal = ({ isOpen, onClose, onSave, savedName }) => {
     const [chatName, setChatName] = useState('');
 
+    useEffect(() => {
+        setChatName(savedName || '');
+    }, [savedName]);
+
     const handleSave = () => {
         onSave(chatName);
-        setChatName('');
+        onClose();
     };
 
     return (
@@ -24,23 +28,23 @@ const SaveChatModal = ({ isOpen, onClose, onSave, savedName }) => {
                 {(onClose) => (
                     <>
                         <ModalHeader className="flex flex-col gap-1">
-                            <h4>Settings</h4>
+                            <h4>Save Chat</h4>
                         </ModalHeader>
                         <ModalBody>
                             <Input
                                 name="name"
-                                placeholder="Enter template name"
+                                placeholder="Enter chat name"
                                 startContent={<Pen className="text-xl text-default-400 pointer-events-none flex-shrink-0" />}
+                                value={chatName}
                                 onChange={(e) => setChatName(e.target.value)}
-                                value={savedName}
                             />
                         </ModalBody>
                         <ModalFooter>
                             <Button auto flat color="error" onPress={onClose}>
-                                <X icon={16} />Close
+                                <X size={16} />Close
                             </Button>
                             <Button auto onPress={handleSave}>
-                                <SaveAll icon={16} />Save
+                                <SaveAll size={16} />Save
                             </Button>
                         </ModalFooter>
                     </>

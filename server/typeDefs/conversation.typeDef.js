@@ -1,12 +1,15 @@
 const conversationTypeDef = `#graphql
     input InputMessage {
         role: String!,
-        content: String!
+        content: String!,
+        type: String!
+        timeStamp: String!
     }
 
     type OutputMessage {
         role: String!,
         content: String!
+        type: String!
     }
 
     type UserStreamedPayload {
@@ -22,7 +25,7 @@ const conversationTypeDef = `#graphql
     }
 
     type Mutation {
-        sendMessage(templateId: ID!, messages: [InputMessage!]!): Boolean
+        sendMessage(templateId: ID!, messages: [InputMessage!]!, type: String!): Boolean
         startRecording: Boolean
         stopRecording(templateId: ID!, messages: [InputMessage!]!): Boolean
         sendAudioData(data: String!): Boolean

@@ -21,6 +21,8 @@ const chatTypeDef = `#graphql
     input ChatMessageInput {
         role: String!
         content: String!
+        type: String!
+        timeStamp: String!
     }
 
     type SaveChatResponse {
@@ -42,6 +44,8 @@ const chatTypeDef = `#graphql
     type ChatMessage {
         role: String!
         content: String!
+        type: String!
+        timeStamp: String!
     }
 
     type Feedback {

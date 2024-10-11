@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect, useCallback } from 'react';
-import { useParams } from 'react-router-dom';
-import { useQuery } from '@apollo/client';
+import { useParams, useNavigate } from 'react-router-dom';
+import { useQuery, useSubscription } from '@apollo/client';
 import Header from '../components/nav/Header';
 import { GET_TEMPLATE_BY_SLUG } from '../graphql/queries/templates.query';
 import { GET_ENABLE_TYPES } from '../graphql/queries/types.query';
@@ -11,6 +11,8 @@ import SaveChatModal from '../components/ui/SaveChatModal';
 import { ME_QUERY } from '../graphql/queries/me.query';
 import { GET_SAVED_CHAT } from '../graphql/queries/chat.query';
 import { useTextCompletion } from '../hooks/useTextCompletion';
+import { MESSAGE_SUBSCRIPTION } from '../graphql/subscriptions/conversation.subscription';
+import { useCrud } from '../hooks/useCrud';
 
 const Template = () => {
     const { templateSlug, savedChatId } = useParams();
@@ -22,6 +24,8 @@ const Template = () => {
     const [messages, setMessages] = useState([]);
     const [currentStreamedMessage, setCurrentStreamedMessage] = useState({});
     const [isTyping, setIsTyping] = useState(false);
+    const [currentType, setCurrentType] = useState();
+    const navigate = useNavigate();
 
     const { data, loading } = useQuery(GET_TEMPLATE_BY_SLUG, {
         variables: { slug: templateSlug }
@@ -40,11 +44,16 @@ const Template = () => {
         }
     };
 
+    useEffect(() => {
+        scrollToBottom();
+    }, [messages, currentStreamedMessage]);
+
     const isEmpty = (obj) => Object.keys(obj).length === 0;
 
     useEffect(() => {
         if (enableTypes && enableTypes.types && enableTypes.types.length > 0) {
-            setSelectedType(enableTypes.types[1]);
+            setSelectedType(enableTypes.types[3]);
+            setCurrentType(enableTypes.types[3].name);
         }
     }, [enableTypes]);
 
@@ -53,7 +62,7 @@ const Template = () => {
             const { chats, name } = savedChat.getSavedChatById;
             const transformedChats = Object.values(chats)
                 .filter(chat => typeof chat === 'object')
-                .map(({ role, content }) => ({ role, content }));
+                .map(({ role, content, type, timeStamp }) => ({ role, content, type, timeStamp }));
             setMessages(transformedChats);
             setChatName(name || data?.templateBySlug?.aiRole);
         }
@@ -63,27 +72,45 @@ const Template = () => {
     const handleOpenSaveChatModal = () => setIsSaveChatModalOpen(true);
     const handleSelectType = (type) => {
         setSelectedType(type);
+        setCurrentType(type.name);
         setIsModalOpen(false);
     };
 
-    const {handleSendMessage} = useTextCompletion(data?.templateBySlug?.id, setMessages, currentStreamedMessage, setCurrentStreamedMessage, isEmpty, setIsTyping)
+    const getCurrentTime = () => {
+        return new Date().toLocaleTimeString('en-NZ', { 
+            hour12: false, 
+            hour: '2-digit', 
+            minute: '2-digit',
+            second: '2-digit'
+        })
+    }
 
-    const handleSaveChat = () => {
-        // Implementation for saving chat
-    };
-
-    const onDeleteChat = () => {
-        // Implementation for deleting chat
-    };
-
-    const onFeedback = () => {
-        // Implementation for feedback
-    };
+    const { error: msgStreamErr } = useSubscription(MESSAGE_SUBSCRIPTION, {
+        skip: !data?.templateBySlug?.id,
+        variables: { templateId: data?.templateBySlug?.id },
+        onSubscriptionData: ({ subscriptionData }) => {
+            const { role, content, type } = subscriptionData?.data?.messageStreamed;
+            if (content !== undefined) {
+                const timeStamp = getCurrentTime();
+                setCurrentStreamedMessage((prevMessage) => {
+                    if (!prevMessage) return { role, content, type, timeStamp };
+                    return {
+                        ...prevMessage, 
+                        role, 
+                        content: prevMessage.content ? prevMessage.content + content : '' + content, 
+                        type: currentType, 
+                        timeStamp: prevMessage.timeStamp || timeStamp };
+                });
+                if(isTyping) setIsTyping(false);
+            }
+        }
+    });
 
     useEffect(() => {
-        scrollToBottom();
-    }, []);
-
+        if(msgStreamErr) console.log(msgStreamErr);
+    }, [msgStreamErr]);
+    const { handleSendMessage } = useTextCompletion(data?.templateBySlug?.id, setMessages, currentStreamedMessage, setCurrentStreamedMessage, isEmpty, setIsTyping, currentType, getCurrentTime);
+    const { handleSaveChat, onDeleteChat, onFeedback } = useCrud(data?.templateBySlug, userData, currentStreamedMessage, setCurrentStreamedMessage, setChatName, messages, setMessages, chatName, savedChatId, setIsSaveChatModalOpen, templateSlug, navigate);
 
     const startListening = useCallback(() => {
         
@@ -92,10 +119,6 @@ const Template = () => {
     const stopRecording = useCallback(() => {
         
     }, []);
-
-    const handleSendMessage = () => {
-
-    }
 
     if (loading || typeLoading || savedChatLoading || userLoading) {
         return <div className="flex items-center justify-center h-screen">Loading...</div>;
@@ -106,9 +129,8 @@ const Template = () => {
             <Header name={chatName || data?.templateBySlug?.aiRole} icon={data?.templateBySlug?.icon} />
             <div className="flex flex-col h-screen relative max-w-940 mx-auto items-center overflow-hidden">
                 <div ref={chatContainerRef} className="flex-grow w-full p-4 overflow-y-auto scrollbar-hide mb-40">
-                    {messages && messages.map((message, index) => (
-                        <ChatMessage key={`${message.role}-${index}`} message={message} />
-                    ))}
+                    {messages && messages.map((message, index) => (<ChatMessage key={`${message.role}-${index}`} message={message} />))}
+                    {!isEmpty(currentStreamedMessage) && <ChatMessage message={currentStreamedMessage} />}
                 </div>
                 <ChatBottom 
                     selectedType={selectedType}

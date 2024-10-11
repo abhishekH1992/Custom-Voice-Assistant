@@ -9,6 +9,8 @@ export const GET_SAVED_CHAT = gql`
             chats {
                 role
                 content
+                type
+                timeStamp
             }
             name
         }

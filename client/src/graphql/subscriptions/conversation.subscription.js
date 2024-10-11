@@ -5,6 +5,7 @@ export const MESSAGE_SUBSCRIPTION = gql`
         messageStreamed(templateId: $templateId) {
             role
             content
+            type
         }
     }
 `;

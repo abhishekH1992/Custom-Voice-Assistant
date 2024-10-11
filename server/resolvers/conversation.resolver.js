@@ -13,11 +13,10 @@ const activeStreams = new Map();
 
 const conversationResolver = {
     Mutation: {
-        sendMessage: async(_, { templateId, messages }) => {
+        sendMessage: async(_, { templateId, messages, type }) => {
             const cacheKey = `template:${templateId}`;
             try {
                 let template = await getRedisCached(cacheKey);
-
                 if(!template) {
                     template = await Template.findByPk(templateId);
                     await addRedisCached(cacheKey, template);
@@ -33,7 +32,7 @@ const conversationResolver = {
 
                 for await (const part of stream) {
                     pubsub.publish('MESSAGE_STREAMED', { 
-                        messageStreamed: { role: 'system', content: part.choices[0]?.delta?.content || '' },
+                        messageStreamed: { role: 'system', content: part.choices[0]?.delta?.content || '', type: type  },
                         templateId
                     });
                 }
