@@ -60,70 +60,76 @@ const conversationResolver = {
             const filePath = path.join(__dirname, '..', 'temp', fileName);
             fs.writeFileSync(filePath, audioBuffer);
             const cacheKey = `template:${templateId}`;
-            let transcriptionSuccess = true;
+            // let transcriptionSuccess = true;
             try {
                 let fullTranscription = '';
-                try {
-                    const transcriptionStream = await transcribeAudio(filePath);
-                    for await (const part of transcriptionStream) {
-                        const transcriptionPart = part || '';
-                        fullTranscription += transcriptionPart;
-                    }
-                    pubsub.publish('USER_STREAMED', { 
-                        userStreamed: { content: fullTranscription },
-                        templateId
-                    });
-                    transcriptionSuccess = true;
-                } catch(error) {
-                    transcriptionSuccess = false;
-                }
-                fs.unlinkSync(filePath);
-
-                let template = await getRedisCached(cacheKey);
-                if(!template) {
-                    template = await Template.findByPk(templateId);
-                    await addRedisCached(cacheKey, template);
-                }
-                const stream = await textCompletion(
-                    template.model,
-                    [
-                        { 'role': 'system', content: template.prompt },
-                        ...messages,
-                        { 'role': transcriptionSuccess ? 'user' : 'system', content: transcriptionSuccess ? fullTranscription : 'Ask to repeat it. System couldnt heard what user said.' }
-                    ],
-                    true
-                );
-
-                const abortController = new AbortController();
-                activeStreams.set(templateId, abortController);
-
-                const combinedStreamInstance = combinedStream(stream, templateId, abortController.signal);
-                try {
-                    for await (const part of combinedStreamInstance) {
-                        if (part.messageStreamed) {
-                            pubsub.publish('MESSAGE_STREAMED', {
-                                messageStreamed: part.messageStreamed,
-                                templateId 
-                            });
-                        } 
-                        else if (part.audioStreamed) {
-                            pubsub.publish('AUDIO_STREAMED', {
-                                audioStreamed: part.audioStreamed,
-                                templateId
-                            });
+                // try {
+                console.log(filePath); //put if condition to check if file is audio
+                // let isValidFile = await isValidAudioFile(filePath);console.log(isValidFile);
+                // if(isValidFile) {
+                        const transcriptionStream = await transcribeAudio(filePath);
+                        for await (const part of transcriptionStream) {
+                            const transcriptionPart = part || '';
+                            fullTranscription += transcriptionPart;
                         }
+                        pubsub.publish('USER_STREAMED', { 
+                            userStreamed: { content: fullTranscription },
+                            templateId
+                        });
+                    //     transcriptionSuccess = true;
+                    // } catch(error) {
+                    //     transcriptionSuccess = false;
+                    // }
+                    // fs.unlinkSync(filePath);
+
+                    let template = await getRedisCached(cacheKey);
+                    if(!template) {
+                        template = await Template.findByPk(templateId);
+                        await addRedisCached(cacheKey, template);
                     }
-                } catch (error) {
-                    if (error.name === 'AbortError') {
-                        console.log(`Stream for template ${templateId} was aborted`);
-                    } else {
-                        throw error;
+                    const stream = await textCompletion(
+                        template.model,
+                        [
+                            { 'role': 'system', content: template.prompt },
+                            ...messages,
+                            { 'role': 'user', content: fullTranscription }
+                        ],
+                        true
+                    );
+
+                    const abortController = new AbortController();
+                    activeStreams.set(templateId, abortController);
+
+                    const combinedStreamInstance = combinedStream(stream, templateId, abortController.signal);
+                    try {
+                        for await (const part of combinedStreamInstance) {
+                            if (part.messageStreamed) {
+                                pubsub.publish('MESSAGE_STREAMED', {
+                                    messageStreamed: part.messageStreamed,
+                                    templateId 
+                                });
+                            } 
+                            else if (part.audioStreamed) {
+                                pubsub.publish('AUDIO_STREAMED', {
+                                    audioStreamed: part.audioStreamed,
+                                    templateId
+                                });
+                            }
+                        }
+                    } catch (error) {
+                        if (error.name === 'AbortError') {
+                            console.log(`Stream for template ${templateId} was aborted`);
+                        } else {
+                            throw error;
+                        }
+                    } finally {
+                        activeStreams.delete(templateId);
                     }
-                } finally {
-                    activeStreams.delete(templateId);
-                }
-        
-                return true;
+            
+                    return true;
+                // }
+
+                // return false;
             } catch (error) {
                 console.error('Error transcribing audio or generating response:', error);
                 return false;
