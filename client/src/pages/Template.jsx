@@ -52,8 +52,8 @@ const Template = () => {
 
     useEffect(() => {
         if (enableTypes && enableTypes.types && enableTypes.types.length > 0) {
-            setSelectedType(enableTypes.types[3]);
-            setCurrentType(enableTypes.types[3].name);
+            setSelectedType(enableTypes.types[0]);
+            setCurrentType(enableTypes.types[0].name);
         }
     }, [enableTypes]);
 
