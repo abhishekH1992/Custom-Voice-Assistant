@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useMutation } from '@apollo/client';
 import { STOP_RECORDING } from '../graphql/mutations/conversation.mutation';
 
-const useVoiceDetection = (templateId, setMessages, currentStreamedMessage, setCurrentStreamedMessage, isEmpty, setIsTyping, currentType, getCurrentTime, isInterrupted) => {
+const useVoiceDetection = (templateId, setMessages, currentStreamedMessage, setCurrentStreamedMessage, isEmpty, setIsTyping, currentType, getCurrentTime, isInterrupted, setIsCallActive, selectedType) => {
     const [isListening, setIsListening] = useState(false);
     const [transcription, setTranscription] = useState('');
     const [recognition, setRecognition] = useState(null);
@@ -41,20 +41,22 @@ const useVoiceDetection = (templateId, setMessages, currentStreamedMessage, setC
     }, []);
 
     const startListening = useCallback(() => {
-        if (recognition) {
+        if (recognition && !isListening) {
+            setIsCallActive(true);
             setTranscription('');
             recognition.start();
             setIsListening(true);
             messagesSentRef.current = false;
+        } else if (isListening) {
+            console.warn('Speech recognition is already active.');
         }
-    }, [recognition]);
+    }, [recognition, setIsCallActive, isListening]);
 
     const sendMessageToServer = useCallback(async (messages) => {
         if (messagesSentRef.current) return;
         messagesSentRef.current = true;
         
         try {
-            console.log('Sending message to server');
             await stopRecording({
                 variables: {
                     templateId: templateId,
@@ -68,8 +70,9 @@ const useVoiceDetection = (templateId, setMessages, currentStreamedMessage, setC
         }
     }, [stopRecording, templateId, currentType]);
 
-    const stopListening = useCallback(() => {
-        if (recognition) {
+    const stopListening = useCallback(async(isStop=false) => {
+        console.log('stopListening called', { isStop, isListening });
+        if (recognition && isListening) {
             recognition.stop();
             setIsListening(false);
             setIsTyping(true);
@@ -84,7 +87,8 @@ const useVoiceDetection = (templateId, setMessages, currentStreamedMessage, setC
 
             setCurrentStreamedMessage({});
         }
-    }, [currentStreamedMessage, currentType, getCurrentTime, isEmpty, isInterrupted, recognition, sendMessageToServer, setCurrentStreamedMessage, setIsTyping, setMessages, transcription]);
+        if(isStop) setIsCallActive(false);
+    }, [currentStreamedMessage, currentType, getCurrentTime, isEmpty, isInterrupted, recognition, sendMessageToServer, setCurrentStreamedMessage, setIsCallActive, setIsTyping, setMessages, transcription, isListening]);
 
     return {
         isListening,

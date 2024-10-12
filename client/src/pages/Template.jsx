@@ -30,6 +30,11 @@ const Template = () => {
     const navigate = useNavigate();
     const [recordingDuration, setRecordingDuration] = useState(null);
     const [isInterrupted, setIsInterrupted] = useState(false);
+    const [isCallActive, setIsCallActive] = useState(false);
+    const [isUserInitiatedCallEnd, setIsUserInitiatedCallEnd] = useState(false);
+    const [remainingTime, setRemainingTime] = useState(0);
+    const [isSystemAudioComplete, setIsSystemAudioComplete] = useState(true);
+    const countdownTimerRef = useRef(null);
 
     const { data, loading } = useQuery(GET_TEMPLATE_BY_SLUG, {
         variables: { slug: templateSlug }
@@ -52,8 +57,9 @@ const Template = () => {
 
     useEffect(() => {
         if (enableTypes && enableTypes.types && enableTypes.types.length > 0) {
-            setSelectedType(enableTypes.types[0]);
-            setCurrentType(enableTypes.types[0].name);
+            setSelectedType(enableTypes.types[1]);
+            setCurrentType(enableTypes.types[1].name);
+            setRecordingDuration(enableTypes.types[1].duration);
         }
     }, [enableTypes]);
 
@@ -113,20 +119,75 @@ const Template = () => {
 
     const { handleSendMessage } = useTextCompletion(data?.templateBySlug?.id, setMessages, currentStreamedMessage, setCurrentStreamedMessage, isEmpty, setIsTyping, currentType, getCurrentTime);
     const { handleSaveChat, onDeleteChat, onFeedback } = useCrud(data?.templateBySlug, userData, currentStreamedMessage, setCurrentStreamedMessage, setChatName, messages, setMessages, chatName, savedChatId, setIsSaveChatModalOpen, templateSlug, navigate);
-    const { isPlaying, stopAudio } = useAudioStreaming(data?.templateBySlug?.id);
-    const { isListening, startListening, stopListening } = useVoiceDetection(data?.templateBySlug?.id, setMessages, currentStreamedMessage, setCurrentStreamedMessage, isEmpty, setIsTyping, currentType, getCurrentTime, isInterrupted);
+    const { isPlaying, stopAudio } = useAudioStreaming(data?.templateBySlug?.id, setIsSystemAudioComplete);
+    const { isListening, startListening, stopListening } = useVoiceDetection(data?.templateBySlug?.id, setMessages, currentStreamedMessage, setCurrentStreamedMessage, isEmpty, setIsTyping, currentType, getCurrentTime, isInterrupted, setIsCallActive, selectedType);
 
     const handleStartListening = useCallback(() => {
-        if (isPlaying) {
-            setIsInterrupted(true);
-            stopAudio().then(() => {
+        if (selectedType && selectedType.isAutomatic) {
+            setIsCallActive(true);
+            if (!isPlaying && !isListening) {
                 startListening();
-            });
+            }
         } else {
-            setIsInterrupted(false);
-            startListening();
+            if (isPlaying) {
+                setIsInterrupted(true);
+                stopAudio().then(() => {
+                    setIsCallActive(true);
+                    if (!isListening) {
+                        startListening();
+                    }
+                });
+            } else if (!isListening) {
+                setIsInterrupted(false);
+                startListening();
+                setIsCallActive(true);
+            }
         }
-    }, [isPlaying, startListening, stopAudio]);
+    }, [isPlaying, isListening, selectedType, startListening, stopAudio]);
+
+    const handleStopListening = useCallback((isStop=true) => {
+        console.log('handleStopListening called', { isStop });
+        setIsUserInitiatedCallEnd(true);
+        stopListening(isStop);
+    }, [stopListening]);
+
+    useEffect(() => {
+        let recordingTimer;
+        
+        const startRecordingProcess = () => {
+            console.log('startRecordingProcess');
+            handleStartListening();
+            setIsSystemAudioComplete(false);
+            setRemainingTime(recordingDuration);
+    
+            countdownTimerRef.current = setInterval(() => {
+                console.log('timer');
+                setRemainingTime(prevTime => {
+                    if (prevTime <= 1) {
+                        clearInterval(countdownTimerRef.current);
+                        return 0;
+                    }
+                    return prevTime - 1;
+                });
+            }, 1000);
+            
+            recordingTimer = setTimeout(() => {
+                console.log(recordingDuration);
+                handleStopListening(false);
+            }, recordingDuration * 1000);
+        };
+    
+        if (isCallActive && selectedType && selectedType.isAutomatic && !isUserInitiatedCallEnd) {
+            if (isSystemAudioComplete) {
+                startRecordingProcess();
+            }
+        }
+    
+        return () => {
+            clearTimeout(recordingTimer);
+            clearInterval(countdownTimerRef.current);
+        };
+    }, [handleStartListening, handleStopListening, isCallActive, isSystemAudioComplete, isUserInitiatedCallEnd, recordingDuration, selectedType]);
 
     useEffect(() => {
         scrollToBottom();
@@ -143,7 +204,11 @@ const Template = () => {
                 <div ref={chatContainerRef} className="flex-grow w-full p-4 overflow-y-auto scrollbar-hide mb-40">
                     {messages && messages.map((message, index) => (<ChatMessage key={`${message.role}-${index}`} message={message} />))}
                     {!isEmpty(currentStreamedMessage) && <ChatMessage message={currentStreamedMessage} />}
-                    {isListening && <ChatMessage message={{ role: 'system', content: 'Listening...' }} />}
+                    {selectedType?.isAutomatic && isListening ? (
+                        <ChatMessage message={{ role: 'system', content: `Listening...(${remainingTime.toString()} seconds remaining)` }} />
+                    ) : isListening && (
+                        <ChatMessage message={{ role: 'system', content: 'Listening...' }} />
+                    )}
                     {isTyping && <ChatMessage message={{ role: 'system', content: 'Thinking...' }} />}
                 </div>
                 <ChatBottom 
@@ -155,7 +220,7 @@ const Template = () => {
                     savedChatId={savedChatId}
                     onFeedback={onFeedback}
                     onStartRecording={handleStartListening}
-                    onStopRecording={stopListening}
+                    onStopRecording={handleStopListening}
                     isRecording={isListening}
                 />
                 <TypeSettingsModal

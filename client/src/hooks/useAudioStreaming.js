@@ -4,7 +4,7 @@ import { useSubscription } from '@apollo/client';
 import { AUDIO_SUBSCRIPTION } from '../graphql/subscriptions/conversation.subscription';
 import { STOP_STREAMING } from '../graphql/mutations/conversation.mutation';
 
-const useAudioStreaming = (templateId) => {
+const useAudioStreaming = (templateId, setIsSystemAudioComplete) => {
     const audioContextRef = useRef(null);
     const sourceNodeRef = useRef(null);
     const [isPlaying, setIsPlaying] = useState(false);
@@ -35,6 +35,7 @@ const useAudioStreaming = (templateId) => {
 
     const playNextInQueue = useCallback(async () => {
         if (audioQueueRef.current.length === 0 || isPlayingRef.current) {
+            setIsSystemAudioComplete(true);
             return;
         }
 
@@ -55,7 +56,11 @@ const useAudioStreaming = (templateId) => {
             sourceNodeRef.current.onended = () => {
                 isPlayingRef.current = false;
                 setIsPlaying(false);
-                playNextInQueue();
+                if (audioQueueRef.current.length === 0) {
+                    setIsSystemAudioComplete(true);
+                } else {
+                    playNextInQueue();
+                }
             };
 
             sourceNodeRef.current.start();
@@ -65,7 +70,7 @@ const useAudioStreaming = (templateId) => {
             setIsPlaying(false);
             playNextInQueue();
         }
-    }, [initAudioContext]);
+    }, [initAudioContext, setIsSystemAudioComplete]);
 
     const queueAudioChunk = useCallback((audioBuffer) => {
         audioQueueRef.current.push(audioBuffer);
