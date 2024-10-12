@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useMutation } from '@apollo/client';
 import { STOP_RECORDING } from '../graphql/mutations/conversation.mutation';
 
-const useVoiceDetection = (templateId, setMessages, currentStreamedMessage, setCurrentStreamedMessage, isEmpty, setIsTyping, currentType, getCurrentTime) => {
+const useVoiceDetection = (templateId, setMessages, currentStreamedMessage, setCurrentStreamedMessage, isEmpty, setIsTyping, currentType, getCurrentTime, isInterrupted) => {
     const [isListening, setIsListening] = useState(false);
     const [transcription, setTranscription] = useState('');
     const [recognition, setRecognition] = useState(null);
@@ -76,15 +76,15 @@ const useVoiceDetection = (templateId, setMessages, currentStreamedMessage, setC
             const currentTime = getCurrentTime();
             setMessages(prevMessages => {
                 const newMessages = !isEmpty(currentStreamedMessage)
-                    ? [...prevMessages, { role: 'system', content: currentStreamedMessage.content, type: currentStreamedMessage.type, timeStamp: currentStreamedMessage.timeStamp }, { role: 'user', content: transcription, type: currentType, timeStamp: currentTime }]
-                    : [...prevMessages, { role: 'user', content: transcription, type: currentType, timeStamp: currentTime  }];
+                    ? [...prevMessages, { role: 'system', content: currentStreamedMessage.content, type: currentStreamedMessage.type, timeStamp: currentStreamedMessage.timeStamp }, { role: 'user', content: transcription, type: currentType, timeStamp: currentTime, isInterrupted: isInterrupted }]
+                    : [...prevMessages, { role: 'user', content: transcription, type: currentType, timeStamp: currentTime, isInterrupted: isInterrupted }];
                 sendMessageToServer(newMessages);
                 return newMessages;
             });
 
             setCurrentStreamedMessage({});
         }
-    }, [currentStreamedMessage, currentType, getCurrentTime, isEmpty, recognition, sendMessageToServer, setCurrentStreamedMessage, setIsTyping, setMessages, transcription]);
+    }, [currentStreamedMessage, currentType, getCurrentTime, isEmpty, isInterrupted, recognition, sendMessageToServer, setCurrentStreamedMessage, setIsTyping, setMessages, transcription]);
 
     return {
         isListening,

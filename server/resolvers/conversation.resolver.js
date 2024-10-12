@@ -60,8 +60,6 @@ const conversationResolver = {
                     true
                 );
 
-                console.log(stream);
-
                 const abortController = new AbortController();
                 activeStreams.set(templateId, abortController);
 

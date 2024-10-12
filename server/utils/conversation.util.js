@@ -8,6 +8,8 @@ const textCompletion = async(model, messages, stream = false) => {
         stream: stream,
     });
 
+    console.log(response);
+
     return response;
 }
 

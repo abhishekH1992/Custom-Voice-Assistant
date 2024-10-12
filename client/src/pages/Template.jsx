@@ -28,6 +28,8 @@ const Template = () => {
     const [isTyping, setIsTyping] = useState(false);
     const [currentType, setCurrentType] = useState();
     const navigate = useNavigate();
+    const [recordingDuration, setRecordingDuration] = useState(null);
+    const [isInterrupted, setIsInterrupted] = useState(false);
 
     const { data, loading } = useQuery(GET_TEMPLATE_BY_SLUG, {
         variables: { slug: templateSlug }
@@ -72,6 +74,7 @@ const Template = () => {
         setSelectedType(type);
         setCurrentType(type.name);
         setIsModalOpen(false);
+        setRecordingDuration(type.duration);
     };
 
     const getCurrentTime = () => {
@@ -111,14 +114,16 @@ const Template = () => {
     const { handleSendMessage } = useTextCompletion(data?.templateBySlug?.id, setMessages, currentStreamedMessage, setCurrentStreamedMessage, isEmpty, setIsTyping, currentType, getCurrentTime);
     const { handleSaveChat, onDeleteChat, onFeedback } = useCrud(data?.templateBySlug, userData, currentStreamedMessage, setCurrentStreamedMessage, setChatName, messages, setMessages, chatName, savedChatId, setIsSaveChatModalOpen, templateSlug, navigate);
     const { isPlaying, stopAudio } = useAudioStreaming(data?.templateBySlug?.id);
-    const { isListening, startListening, stopListening } = useVoiceDetection(data?.templateBySlug?.id, setMessages, currentStreamedMessage, setCurrentStreamedMessage, isEmpty, setIsTyping, currentType, getCurrentTime);
+    const { isListening, startListening, stopListening } = useVoiceDetection(data?.templateBySlug?.id, setMessages, currentStreamedMessage, setCurrentStreamedMessage, isEmpty, setIsTyping, currentType, getCurrentTime, isInterrupted);
 
     const handleStartListening = useCallback(() => {
         if (isPlaying) {
+            setIsInterrupted(true);
             stopAudio().then(() => {
                 startListening();
             });
         } else {
+            setIsInterrupted(false);
             startListening();
         }
     }, [isPlaying, startListening, stopAudio]);

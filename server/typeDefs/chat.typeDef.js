@@ -23,6 +23,7 @@ const chatTypeDef = `#graphql
         content: String!
         type: String!
         timeStamp: String!
+        isInterrupted: Boolean
     }
 
     type SaveChatResponse {
