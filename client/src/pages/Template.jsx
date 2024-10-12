@@ -367,29 +367,29 @@ const Template = () => {
         }
         if (isUserInitiated && (selectedType?.isAutomatic || selectedType?.isContinous)) {
             handleStreamStopped();
-            isActivityDetected.current = false;
-            setIsTyping(false);
-            if (isStreamingRef.current) {
-                isStreamingRef.current = false;
-                setCurrentStreamedMessage({});
-                streamedMessageRef.current = '';
-            }
-            audioQueue.current = [];
-            if (audioRef.current) {
-                audioRef.current.pause();
-                audioRef.current.src = '';
-            }
-            isPlayingAudio.current = false;
-            setIsSystemAudioComplete(true);
-            if (isCallActive) {
-                setIsCallActive(false);
-            }
-            if (mediaRecorderRef.current) {
-                mediaRecorderRef.current.stop();
-                mediaRecorderRef.current = null;
-            }
+            // isActivityDetected.current = false;
+            // setIsTyping(false);
+            // if (isStreamingRef.current) {
+            //     isStreamingRef.current = false;
+            //     setCurrentStreamedMessage({});
+            //     streamedMessageRef.current = '';
+            // }
+            // audioQueue.current = [];
+            // if (audioRef.current) {
+            //     audioRef.current.pause();
+            //     audioRef.current.src = '';
+            // }
+            // isPlayingAudio.current = false;
+            // setIsSystemAudioComplete(true);
+            // if (isCallActive) {
+            //     setIsCallActive(false);
+            // }
+            // if (mediaRecorderRef.current) {
+            //     mediaRecorderRef.current.stop();
+            //     mediaRecorderRef.current = null;
+            // }
         }
-    }, [selectedType, stopVoiceActivityDetection, stopRecording, data?.templateBySlug?.id, isCallActive, handleStreamStopped]);
+    }, [selectedType, stopVoiceActivityDetection, stopRecording, data?.templateBySlug?.id, handleStreamStopped]);
 
     useEffect(() => {
         let recordingTimer;
@@ -530,11 +530,11 @@ const Template = () => {
                     },
                     // fftSize: 2048,
                     // bufferLen: 2048,
-                    smoothingTimeConstant: 0.8,
+                    smoothingTimeConstant: 0.9,
                     // minCaptureFreq: 150,
                     // maxCaptureFreq: 3500,
                     noiseCaptureDuration: 300,
-                    minNoiseLevel: 0.2,
+                    minNoiseLevel: 0.4,
                     maxNoiseLevel: 0.8,
                     // avgNoiseMultiplier: 1.4,
                 });
