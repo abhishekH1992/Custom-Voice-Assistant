@@ -197,8 +197,6 @@ const Template = () => {
         if(stopStreamErr) console.log('STREAM_STOPPED: '+stopStreamErr);
     })
 
-    
-
     const playNextAudio = useCallback(() => {
         if ((audioQueue.current.length > 0 && !selectedType?.isAutomatic && !selectedType?.isContinous) || (audioQueue.current.length > 0 && !isUserInitiatedStop && (selectedType?.isAutomatic || selectedType?.isContinous) && isActivityDetected.current === false)) {
             isPlayingAudio.current = true;
