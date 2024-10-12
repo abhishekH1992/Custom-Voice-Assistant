@@ -1,26 +1,46 @@
-require('dotenv').config();
 const express = require('express');
+const http = require('http');
 const { ApolloServer } = require('@apollo/server');
 const { expressMiddleware } = require('@apollo/server/express4');
+const { ApolloServerPluginDrainHttpServer } = require('@apollo/server/plugin/drainHttpServer');
+const { WebSocketServer } = require('ws');
+const { useServer } = require('graphql-ws/lib/use/ws');
 const { makeExecutableSchema } = require('@graphql-tools/schema');
 const cors = require('cors');
-const jwt = require('jsonwebtoken');
 const path = require('path');
+const session = require('express-session');
+const authMiddleware = require('./middleware/auth.js');
+const dotenv = require('dotenv');
+const jwt = require('jsonwebtoken');
 const { User } = require('./models');
 const mergedTypeDef = require('./typeDefs/index.js');
 const mergedResolver = require('./resolvers/index.js');
-const { createTunnel } = require('./utils/sshTunnel');
-const db = require('./models');
+
+dotenv.config();
 
 const app = express();
+const httpServer = http.createServer(app);
+const PORT = process.env.PORT || 5000;
 
-// Create the schema
 const schema = makeExecutableSchema({
     typeDefs: mergedTypeDef,
     resolvers: mergedResolver,
 });
 
-// Authentication function
+app.use(session({
+    secret: process.env.SESSION_SECRET,
+    resave: false,
+    saveUninitialized: false,
+    cookie: { 
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict'
+    }
+}));
+
+app.use(authMiddleware);
+
+app.use(express.static(path.join(__dirname, '../client/build')));
+
 const authenticate = async (token) => {
     if (!token) return null;
     try {
@@ -33,89 +53,64 @@ const authenticate = async (token) => {
     }
 };
 
-// Create Apollo Server
-const server = new ApolloServer({
-    schema,
-});
-
-// Start the server
-async function startServer() {
-    try {
-        // Establish SSH tunnel and database connection in production
-        if (process.env.NODE_ENV === 'production') {
-            const sshTunnel = await createTunnel();
-            console.log('SSH Tunnel established');
-
-            // Authenticate database connection
-            await db.sequelize.authenticate();
-            console.log('Database connection has been established successfully.');
-
-            // Handle graceful shutdown
-            process.on('SIGTERM', () => {
-                console.log('SIGTERM signal received: closing HTTP server');
-                sshTunnel.close(() => {
-                    console.log('SSH Tunnel closed');
-                    db.sequelize.close().then(() => {
-                        console.log('Database connection closed');
-                        process.exit(0);
-                    });
-                });
-            });
-        } else {
-            // Development mode without SSH tunnel
-            await db.sequelize.authenticate();
-            console.log('Database connection has been established successfully.');
-        }
-
-        await server.start();
-
-        app.use(
-            '/graphql',
-            cors({
-                origin: process.env.CLIENT_URL || 'https://akoplus.vercel.app',
-                credentials: true,
-            }),
-            express.json(),
-            expressMiddleware(server, {
-                context: async ({ req }) => {
-                    const token = req.headers.authorization || '';
-                    const user = await authenticate(token);
-                    return { user };
-                },
-            })
-        );
-
-        // Health check route
-        app.get('/health', (req, res) => {
-            res.status(200).send('OK');
-        });
-
-        // Serve static files from the React app
-        app.use(express.static(path.join(__dirname, '../client/build')));
-
-        // Handle all other routes by serving the React app
-        app.get('*', (req, res) => {
-            res.sendFile(path.join(__dirname, '../client/build', 'index.html'));
-        });
-
-        const PORT = process.env.PORT || 3000;
-        app.listen(PORT, () => {
-            console.log(`Server is running on port ${PORT}`);
-        });
-
-        return app;
-    } catch (error) {
-        console.error('Failed to start the server:', error);
-        throw error;
-    }
-}
-
-// For both Vercel and local development
-if (require.main === module) {
-    startServer().catch(error => {
-        console.error('Unhandled error during server startup:', error);
-        process.exit(1);
+async function startApolloServer() {
+    const wsServer = new WebSocketServer({
+        server: httpServer,
+        path: '/graphql',
     });
-} else {
-    module.exports = startServer;
+
+    const serverCleanup = useServer({
+        schema,
+        context: async (ctx) => {
+            const token = ctx.connectionParams?.authorization || '';
+            const user = await authenticate(token);
+            return { user };
+        },
+    }, wsServer);
+
+    const server = new ApolloServer({
+        schema,
+        plugins: [
+            ApolloServerPluginDrainHttpServer({ httpServer }),
+            {
+                async serverWillStart() {
+                    return {
+                        async drainServer() {
+                            await serverCleanup.dispose();
+                        },
+                    };
+                },
+            },
+        ],
+    });
+
+    await server.start();
+    
+    app.use(
+        '/graphql',
+        cors({
+            origin: process.env.NODE_ENV === 'production' 
+                ? 'https://convo.akoplus.co.nz' 
+                : 'http://localhost:3000',
+            credentials: true,
+        }),
+        express.json(),
+        expressMiddleware(server, {
+            context: async ({ req }) => {
+                const token = req.headers.authorization || '';
+                const user = await authenticate(token);
+                return { user };
+            },
+        })
+    );
+
+    app.get('*', (req, res) => {
+        res.sendFile(path.join(__dirname, '../client/build/index.html'));
+    });
+
+    await new Promise((resolve) => httpServer.listen({ port: PORT }, resolve));
+    console.log(`🚀 Server ready at ${process.env.NODE_ENV === 'production' ? 'https://convo.akoplus.co.nz/graphql' : `http://localhost:${PORT}/graphql`}`);
+    console.log(`🚀 Subscriptions ready at ${process.env.NODE_ENV === 'production' ? 'wss://convo.akoplus.co.nz/graphql' : `ws://localhost:${PORT}/graphql`}`);
 }
+
+startApolloServer();

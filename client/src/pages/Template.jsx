@@ -189,6 +189,8 @@ const Template = () => {
         }
     });
 
+    
+
     const playNextAudio = useCallback(() => {
         if ((audioQueue.current.length > 0 && !selectedType?.isAutomatic && !selectedType?.isContinous) || (audioQueue.current.length > 0 && !isUserInitiatedStop && (selectedType?.isAutomatic || selectedType?.isContinous))) {
             isPlayingAudio.current = true;
