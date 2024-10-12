@@ -44,6 +44,7 @@ const combinedStream = async function*(textStream, templateId, abortSignal) {
     try {
         for await (const part of textStream) {
             if (abortSignal.aborted) {
+                console.log('Abort');
                 throw new DOMException('Stream aborted', 'AbortError');
             }
             const content = part.choices[0]?.delta?.content || '';
