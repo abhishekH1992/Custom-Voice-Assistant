@@ -7,6 +7,7 @@ const textCompletion = async(model, messages, stream = false) => {
         messages: messages,
         stream: stream,
     });
+    console.log(response);
     return response;
 }
 

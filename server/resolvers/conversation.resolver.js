@@ -41,6 +41,7 @@ const conversationResolver = {
         },
         stopRecording: async (_, { templateId, messages, type }) => {
             if (activeStreams.has(templateId)) {
+                console.log(activeStreams);
                 activeStreams.get(templateId).abort();
                 activeStreams.delete(templateId);
             }

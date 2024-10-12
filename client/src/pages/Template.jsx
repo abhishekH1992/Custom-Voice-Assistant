@@ -30,6 +30,9 @@ const Template = () => {
     const navigate = useNavigate();
     const [recordingDuration, setRecordingDuration] = useState(null);
     const [isInterrupted, setIsInterrupted] = useState(false);
+    const vadRef = useRef(null);
+    const [isCallActive, setIsCallActive] = useState(false);
+    const isCallActiveRef = useRef(false);
 
     const { data, loading } = useQuery(GET_TEMPLATE_BY_SLUG, {
         variables: { slug: templateSlug }
@@ -113,20 +116,41 @@ const Template = () => {
 
     const { handleSendMessage } = useTextCompletion(data?.templateBySlug?.id, setMessages, currentStreamedMessage, setCurrentStreamedMessage, isEmpty, setIsTyping, currentType, getCurrentTime);
     const { handleSaveChat, onDeleteChat, onFeedback } = useCrud(data?.templateBySlug, userData, currentStreamedMessage, setCurrentStreamedMessage, setChatName, messages, setMessages, chatName, savedChatId, setIsSaveChatModalOpen, templateSlug, navigate);
-    const { isPlaying, stopAudio } = useAudioStreaming(data?.templateBySlug?.id);
-    const { isListening, startListening, stopListening } = useVoiceDetection(data?.templateBySlug?.id, setMessages, currentStreamedMessage, setCurrentStreamedMessage, isEmpty, setIsTyping, currentType, getCurrentTime, isInterrupted);
+    const { isPlaying, stopAudio, audioJammer } = useAudioStreaming(data?.templateBySlug?.id);
+    const { isListening, startTheCall, stopListening, recognition } = useVoiceDetection(data?.templateBySlug?.id, setMessages, currentStreamedMessage, setCurrentStreamedMessage, isEmpty, setIsTyping, currentType, getCurrentTime, isInterrupted, selectedType, vadRef, isCallActiveRef, audioJammer);
 
     const handleStartListening = useCallback(() => {
+        setIsCallActive(true);
+        isCallActiveRef.current = true;
         if (isPlaying) {
             setIsInterrupted(true);
-            stopAudio().then(() => {
-                startListening();
-            });
+            audioJammer();
+            startTheCall();
+            // stopAudio().then(() => {
+                
+            // });
         } else {
             setIsInterrupted(false);
-            startListening();
+            startTheCall();
         }
-    }, [isPlaying, startListening, stopAudio]);
+    }, [isPlaying, startTheCall, audioJammer]);
+
+    const stopVoiceActivityDetection = useCallback(() => {
+        recognition.stop();
+        setIsCallActive(false);
+        isCallActiveRef.current = false;
+        if (vadRef.current) {
+            vadRef.current.disconnect();
+            vadRef.current = null;
+        }
+    }, [recognition]);
+
+    const handleStopListening = useCallback(() => {
+        if(selectedType?.isContinous) stopVoiceActivityDetection();
+        stopAudio().then(() => {
+            if(!selectedType?.isContinous) stopListening();
+        });
+    }, [selectedType?.isContinous, stopAudio, stopListening, stopVoiceActivityDetection]);
 
     useEffect(() => {
         scrollToBottom();
@@ -155,8 +179,9 @@ const Template = () => {
                     savedChatId={savedChatId}
                     onFeedback={onFeedback}
                     onStartRecording={handleStartListening}
-                    onStopRecording={stopListening}
+                    onStopRecording={handleStopListening}
                     isRecording={isListening}
+                    isCallActiveRef={isCallActiveRef}
                 />
                 <TypeSettingsModal
                     isOpen={isModalOpen}

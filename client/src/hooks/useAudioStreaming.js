@@ -105,7 +105,16 @@ const useAudioStreaming = (templateId) => {
         }
     }, [templateId, stopStreaming]);
 
-    return { isPlaying, stopAudio };
+    const audioJammer = useCallback(async () => {
+        if (sourceNodeRef.current) {
+            sourceNodeRef.current.stop();
+        }
+        audioQueueRef.current = [];
+        isPlayingRef.current = false;
+        setIsPlaying(false);
+    }, []);
+
+    return { isPlaying, stopAudio, audioJammer };
 };
 
 export default useAudioStreaming;
