@@ -16,10 +16,6 @@ const conversationTypeDef = `#graphql
         content: String!
     }
 
-    type StreamStopped {
-        templateId: ID!
-    }
-
     type Mutation {
         sendMessage(templateId: ID!, messages: [InputMessage!]!, type: String!): Boolean
         stopRecording(templateId: ID!, messages: [InputMessage!]!, type: String!): Boolean
@@ -29,7 +25,6 @@ const conversationTypeDef = `#graphql
     type Subscription {
         messageStreamed(templateId: ID!): OutputMessage!
         audioStreamed(templateId: ID!): AudioStreamedPayload!
-        streamStopped(templateId: ID!): StreamStopped!
     }
 `;
 

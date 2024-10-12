@@ -51,7 +51,6 @@ const conversationResolver = {
                     template = await Template.findByPk(templateId);
                     await addRedisCached(cacheKey, template);
                 }
-                console.log(messages);
                 const stream = await textCompletion(
                     template.model,
                     [
@@ -100,9 +99,6 @@ const conversationResolver = {
             if (activeStreams.has(templateId)) {
                 activeStreams.get(templateId).abort();
                 activeStreams.delete(templateId);
-                pubsub.publish('STREAM_STOPPED', {
-                    streamStopped: { templateId },
-                });
                 return true;
             }
             return false;
@@ -126,10 +122,6 @@ const conversationResolver = {
                 }
                 return null;
             },
-        },
-        streamStopped: {
-            subscribe: () => pubsub.asyncIterator(['STREAM_STOPPED']),
-            resolve: (payload) => payload.streamStopped,
         },
     },
 };

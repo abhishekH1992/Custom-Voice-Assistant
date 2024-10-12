@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { useMutation } from '@apollo/client';
 import { useSubscription } from '@apollo/client';
 import { AUDIO_SUBSCRIPTION } from '../graphql/subscriptions/conversation.subscription';
+import { STOP_STREAMING } from '../graphql/mutations/conversation.mutation';
 
 const useAudioStreaming = (templateId) => {
     const audioContextRef = useRef(null);
@@ -8,6 +10,8 @@ const useAudioStreaming = (templateId) => {
     const [isPlaying, setIsPlaying] = useState(false);
     const audioQueueRef = useRef([]);
     const isPlayingRef = useRef(false);
+
+    const [stopStreaming] = useMutation(STOP_STREAMING);
 
     const { data: audioData } = useSubscription(AUDIO_SUBSCRIPTION, {
         variables: { templateId },
@@ -87,14 +91,19 @@ const useAudioStreaming = (templateId) => {
         }
     }, [audioData, base64ToArrayBuffer, queueAudioChunk]);
 
-    const stopAudio = useCallback(() => {
+    const stopAudio = useCallback(async () => {
         if (sourceNodeRef.current) {
             sourceNodeRef.current.stop();
         }
         audioQueueRef.current = [];
         isPlayingRef.current = false;
         setIsPlaying(false);
-    }, []);
+        try {
+            await stopStreaming({ variables: { templateId } });
+        } catch (error) {
+            console.error('Error stopping stream:', error);
+        }
+    }, [templateId, stopStreaming]);
 
     return { isPlaying, stopAudio };
 };

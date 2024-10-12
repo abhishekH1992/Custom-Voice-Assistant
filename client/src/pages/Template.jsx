@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useSubscription } from '@apollo/client';
 import Header from '../components/nav/Header';
@@ -115,7 +115,17 @@ const Template = () => {
     const { handleSendMessage } = useTextCompletion(data?.templateBySlug?.id, setMessages, currentStreamedMessage, setCurrentStreamedMessage, isEmpty, setIsTyping, currentType, getCurrentTime);
     const { handleSaveChat, onDeleteChat, onFeedback } = useCrud(data?.templateBySlug, userData, currentStreamedMessage, setCurrentStreamedMessage, setChatName, messages, setMessages, chatName, savedChatId, setIsSaveChatModalOpen, templateSlug, navigate);
     const { isPlaying, stopAudio } = useAudioStreaming(data?.templateBySlug?.id);
-    const { isListening, startListening, stopListening } = useVoiceDetection(data?.templateBySlug?.id, setMessages, currentStreamedMessage, setCurrentStreamedMessage, isEmpty, setIsTyping, currentType, getCurrentTime, stopAudio);
+    const { isListening, startListening, stopListening } = useVoiceDetection(data?.templateBySlug?.id, setMessages, currentStreamedMessage, setCurrentStreamedMessage, isEmpty, setIsTyping, currentType, getCurrentTime);
+
+    const handleStartListening = useCallback(() => {
+        if (isPlaying) {
+            stopAudio().then(() => {
+                startListening();
+            });
+        } else {
+            startListening();
+        }
+    }, [isPlaying, startListening, stopAudio]);
 
     if (loading || typeLoading || savedChatLoading || userLoading) {
         return <div className="flex items-center justify-center h-screen">Loading...</div>;
@@ -139,7 +149,7 @@ const Template = () => {
                     onDeleteChat={onDeleteChat}
                     savedChatId={savedChatId}
                     onFeedback={onFeedback}
-                    onStartRecording={startListening}
+                    onStartRecording={handleStartListening}
                     onStopRecording={stopListening}
                     isRecording={isListening}
                 />

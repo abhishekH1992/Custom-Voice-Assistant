@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useMutation } from '@apollo/client';
 import { STOP_RECORDING } from '../graphql/mutations/conversation.mutation';
 
-const useVoiceDetection = (templateId, setMessages, currentStreamedMessage, setCurrentStreamedMessage, isEmpty, setIsTyping, currentType, getCurrentTime, stopAudio) => {
+const useVoiceDetection = (templateId, setMessages, currentStreamedMessage, setCurrentStreamedMessage, isEmpty, setIsTyping, currentType, getCurrentTime) => {
     const [isListening, setIsListening] = useState(false);
     const [transcription, setTranscription] = useState('');
     const [recognition, setRecognition] = useState(null);
