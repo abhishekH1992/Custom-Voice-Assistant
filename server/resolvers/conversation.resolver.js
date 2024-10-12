@@ -1,13 +1,9 @@
 const { Template } = require('../models');
 const { PubSub } = require('graphql-subscriptions');
 const { textCompletion, transcribeAudio, combinedStream } = require('../utils/conversation.util');
-const fs = require('fs');
-const path = require('path');
-const os = require('os');
 const { getRedisCached, addRedisCached } = require('../utils/redis.util');
 
 const pubsub = new PubSub();
-let audioChunks = [];
 
 const activeStreams = new Map();
 
@@ -43,101 +39,62 @@ const conversationResolver = {
                 return false;
             }
         },
-        startRecording: () => {
-            audioChunks = [];
-            console.log('Started recording');
-            return true;
-        },
-        stopRecording: async (_, { templateId, messages }) => {
+        stopRecording: async (_, { templateId, messages, type }) => {
             if (activeStreams.has(templateId)) {
                 activeStreams.get(templateId).abort();
                 activeStreams.delete(templateId);
             }
-
-            const audioBuffer = Buffer.concat(audioChunks);
-            const fileName = `audio_${Date.now()}.wav`;
-            const filePath = path.join(__dirname, '..', 'temp', fileName);
-            fs.writeFileSync(filePath, audioBuffer);
             const cacheKey = `template:${templateId}`;
-            // let transcriptionSuccess = true;
             try {
-                let fullTranscription = '';
-                // try {
-                console.log(filePath); //put if condition to check if file is audio
-                // let isValidFile = await isValidAudioFile(filePath);console.log(isValidFile);
-                // if(isValidFile) {
-                        const transcriptionStream = await transcribeAudio(filePath);
-                        for await (const part of transcriptionStream) {
-                            const transcriptionPart = part || '';
-                            fullTranscription += transcriptionPart;
-                        }
-                        pubsub.publish('USER_STREAMED', { 
-                            userStreamed: { content: fullTranscription },
-                            templateId
-                        });
-                    //     transcriptionSuccess = true;
-                    // } catch(error) {
-                    //     transcriptionSuccess = false;
-                    // }
-                    // fs.unlinkSync(filePath);
+                let template = await getRedisCached(cacheKey);
+                if(!template) {
+                    template = await Template.findByPk(templateId);
+                    await addRedisCached(cacheKey, template);
+                }
+                console.log(messages);
+                const stream = await textCompletion(
+                    template.model,
+                    [
+                        { 'role': 'system', content: template.prompt },
+                        ...messages
+                    ],
+                    true
+                );
 
-                    let template = await getRedisCached(cacheKey);
-                    if(!template) {
-                        template = await Template.findByPk(templateId);
-                        await addRedisCached(cacheKey, template);
+                const abortController = new AbortController();
+                activeStreams.set(templateId, abortController);
+
+                const combinedStreamInstance = combinedStream(stream, templateId, abortController.signal, type);
+                try {
+                    for await (const part of combinedStreamInstance) {
+                        if (part.messageStreamed) {
+                            pubsub.publish('MESSAGE_STREAMED', {
+                                messageStreamed: part.messageStreamed,
+                                templateId 
+                            });
+                        } 
+                        else if (part.audioStreamed) {
+                            pubsub.publish('AUDIO_STREAMED', {
+                                audioStreamed: part.audioStreamed,
+                                templateId
+                            });
+                        }
                     }
-                    const stream = await textCompletion(
-                        template.model,
-                        [
-                            { 'role': 'system', content: template.prompt },
-                            ...messages,
-                            { 'role': 'user', content: fullTranscription }
-                        ],
-                        true
-                    );
-
-                    const abortController = new AbortController();
-                    activeStreams.set(templateId, abortController);
-
-                    const combinedStreamInstance = combinedStream(stream, templateId, abortController.signal);
-                    try {
-                        for await (const part of combinedStreamInstance) {
-                            if (part.messageStreamed) {
-                                pubsub.publish('MESSAGE_STREAMED', {
-                                    messageStreamed: part.messageStreamed,
-                                    templateId 
-                                });
-                            } 
-                            else if (part.audioStreamed) {
-                                pubsub.publish('AUDIO_STREAMED', {
-                                    audioStreamed: part.audioStreamed,
-                                    templateId
-                                });
-                            }
-                        }
-                    } catch (error) {
-                        if (error.name === 'AbortError') {
-                            console.log(`Stream for template ${templateId} was aborted`);
-                        } else {
-                            throw error;
-                        }
-                    } finally {
-                        activeStreams.delete(templateId);
+                } catch (error) {
+                    if (error.name === 'AbortError') {
+                        console.log(`Stream for template ${templateId} was aborted`);
+                    } else {
+                        throw error;
                     }
+                } finally {
+                    activeStreams.delete(templateId);
+                }
             
-                    return true;
-                // }
-
-                // return false;
+                return true;
             } catch (error) {
                 console.error('Error transcribing audio or generating response:', error);
                 return false;
             }
-        },
-        sendAudioData: (_, { data }) => {
-            const audioData = Buffer.from(data, 'base64');
-            audioChunks.push(audioData);
-            return true;
         },
         stopStreaming: async (_, { templateId }) => {
             if (activeStreams.has(templateId)) {
@@ -157,15 +114,6 @@ const conversationResolver = {
             resolve: (payload, variables) => {
                 if (payload.templateId === variables.templateId) {
                     return payload.messageStreamed;
-                }
-                return null;
-            },
-        },
-        userStreamed: {
-            subscribe: (_, { templateId }) => pubsub.asyncIterator(['USER_STREAMED']),
-            resolve: (payload, variables) => {
-                if (payload.templateId === variables.templateId) {
-                    return payload.userStreamed;
                 }
                 return null;
             },

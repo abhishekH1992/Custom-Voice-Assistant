@@ -35,7 +35,7 @@ const textToSpeech = async function*(text, voice='alloy') {
 };
 
 
-const combinedStream = async function*(textStream, templateId, abortSignal) {
+const combinedStream = async function*(textStream, templateId, abortSignal, type) {
     let fullResponse = '';
     let audioBuffer = Buffer.alloc(0);
     let isLastChunk = false;
@@ -71,7 +71,7 @@ const combinedStream = async function*(textStream, templateId, abortSignal) {
                 isTextStreamed = true;
                 for (const textChunk of pendingTextStream) {
                     yield {
-                        messageStreamed: { role: 'system', content: textChunk },
+                        messageStreamed: { role: 'system', content: textChunk, type },
                         templateId,
                     };
                 }
