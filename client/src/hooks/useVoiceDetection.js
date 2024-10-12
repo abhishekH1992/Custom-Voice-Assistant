@@ -7,6 +7,7 @@ const useVoiceDetection = (templateId, setMessages, currentStreamedMessage, setC
     const [isListening, setIsListening] = useState(false);
     const [transcription, setTranscription] = useState('');
     const [recognition, setRecognition] = useState(null);
+    const [recognitionStarted, setRecognitionStarted] = useState(false);
     const messagesSentRef = useRef(false);
 
     const [stopRecording] = useMutation(STOP_RECORDING);
@@ -43,11 +44,12 @@ const useVoiceDetection = (templateId, setMessages, currentStreamedMessage, setC
     const startListening = useCallback(() => {
         if (recognition) {
             setTranscription('');
-            recognition.start();
+            if(!recognitionStarted) recognition.start();
             setIsListening(true);
+            if(!recognitionStarted) setRecognitionStarted(true)
             messagesSentRef.current = false;
         }
-    }, [recognition]);
+    }, [recognition, recognitionStarted]);
 
     const sendMessageToServer = useCallback(async (messages) => {
         if (messagesSentRef.current) return;
@@ -70,7 +72,7 @@ const useVoiceDetection = (templateId, setMessages, currentStreamedMessage, setC
 
     const stopListening = useCallback(() => {
         if (recognition) {
-            recognition.stop();
+            // recognition.stop();
             setIsListening(false);
             setIsTyping(true);
             const currentTime = getCurrentTime();
