@@ -20,7 +20,7 @@ export const AUDIO_SUBSCRIPTION = gql`
 
 export const STREAM_STOPPED_SUBSCRIPTION = gql`
     subscription StreamStopped($templateId: ID!) {
-            streamStopped(templateId: $templateId) {
+        streamStopped(templateId: $templateId) {
             templateId
         }
     }

@@ -11,9 +11,10 @@ import SaveChatModal from '../components/ui/SaveChatModal';
 import { ME_QUERY } from '../graphql/queries/me.query';
 import { GET_SAVED_CHAT } from '../graphql/queries/chat.query';
 import { useTextCompletion } from '../hooks/useTextCompletion';
-import { MESSAGE_SUBSCRIPTION, AUDIO_SUBSCRIPTION } from '../graphql/subscriptions/conversation.subscription';
+import { MESSAGE_SUBSCRIPTION } from '../graphql/subscriptions/conversation.subscription';
 import { useCrud } from '../hooks/useCrud';
 import useVoiceDetection from '../hooks/useVoiceDetection';
+import useAudioStreaming from '../hooks/useAudioStreaming';
 
 const Template = () => {
     const { templateSlug, savedChatId } = useParams();
@@ -113,7 +114,8 @@ const Template = () => {
 
     const { handleSendMessage } = useTextCompletion(data?.templateBySlug?.id, setMessages, currentStreamedMessage, setCurrentStreamedMessage, isEmpty, setIsTyping, currentType, getCurrentTime);
     const { handleSaveChat, onDeleteChat, onFeedback } = useCrud(data?.templateBySlug, userData, currentStreamedMessage, setCurrentStreamedMessage, setChatName, messages, setMessages, chatName, savedChatId, setIsSaveChatModalOpen, templateSlug, navigate);
-    const { isListening, startListening, stopListening } = useVoiceDetection(data?.templateBySlug?.id, setMessages, currentStreamedMessage, setCurrentStreamedMessage, isEmpty, setIsTyping, currentType, getCurrentTime);
+    const { isPlaying, stopAudio } = useAudioStreaming(data?.templateBySlug?.id);
+    const { isListening, startListening, stopListening } = useVoiceDetection(data?.templateBySlug?.id, setMessages, currentStreamedMessage, setCurrentStreamedMessage, isEmpty, setIsTyping, currentType, getCurrentTime, stopAudio);
 
     if (loading || typeLoading || savedChatLoading || userLoading) {
         return <div className="flex items-center justify-center h-screen">Loading...</div>;
