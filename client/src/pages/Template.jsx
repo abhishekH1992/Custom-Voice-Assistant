@@ -119,7 +119,7 @@ const Template = () => {
         scrollToBottom();
     }, [messages, currentStreamedMessage]);
 
-    useSubscription(MESSAGE_SUBSCRIPTION, {
+    const { error: msgErr } = useSubscription(MESSAGE_SUBSCRIPTION, {
         variables: { templateId: data?.templateBySlug?.id },
         onSubscriptionData: ({ subscriptionData }) => {
             const { role, content: newContent } = subscriptionData?.data?.messageStreamed;
@@ -150,7 +150,7 @@ const Template = () => {
         }
     }, [currentStreamedMessage, messages]);
 
-    useSubscription(USER_SUBSCRIPTION, {
+    const { error: userErr } = useSubscription(USER_SUBSCRIPTION, {
         variables: { templateId: data?.templateBySlug?.id },
         onSubscriptionData: ({ subscriptionData }) => {
             const { content } = subscriptionData?.data?.userStreamed || {};
@@ -167,7 +167,7 @@ const Template = () => {
         }
     }, [userStreamedContent]);
 
-    useSubscription(AUDIO_SUBSCRIPTION, {
+    const { error: audioErr} = useSubscription(AUDIO_SUBSCRIPTION, {
         variables: { templateId: data?.templateBySlug?.id },
         onSubscriptionData: ({ subscriptionData }) => {
             const { content } = subscriptionData?.data?.audioStreamed;
@@ -180,7 +180,7 @@ const Template = () => {
         }
     });
 
-    useSubscription(STREAM_STOPPED_SUBSCRIPTION, {
+    const { error: stopStreamErr} = useSubscription(STREAM_STOPPED_SUBSCRIPTION, {
         variables: { templateId: data?.templateBySlug?.id },
         onSubscriptionData: ({ subscriptionData }) => {
             const { templateId } = subscriptionData?.data?.streamStopped;
@@ -189,6 +189,13 @@ const Template = () => {
             }
         }
     });
+
+    useEffect(() => {
+        if(msgErr) console.log('MESSAGE_STREAM: '+msgErr);
+        if(userErr) console.log('USER_STREAM: '+msgErr);
+        if(audioErr) console.log('AUDIO_STREAM: '+msgErr);
+        if(stopStreamErr) console.log('STREAM_STOPPED: '+stopStreamErr);
+    })
 
     
 
