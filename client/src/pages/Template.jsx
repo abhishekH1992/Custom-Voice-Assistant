@@ -46,10 +46,6 @@ const Template = () => {
         }
     };
 
-    useEffect(() => {
-        scrollToBottom();
-    }, [messages, currentStreamedMessage]);
-
     const isEmpty = (obj) => Object.keys(obj).length === 0;
 
     useEffect(() => {
@@ -126,6 +122,10 @@ const Template = () => {
             startListening();
         }
     }, [isPlaying, startListening, stopAudio]);
+
+    useEffect(() => {
+        scrollToBottom();
+    }, [messages, currentStreamedMessage, isListening, isTyping]);
 
     if (loading || typeLoading || savedChatLoading || userLoading) {
         return <div className="flex items-center justify-center h-screen">Loading...</div>;
