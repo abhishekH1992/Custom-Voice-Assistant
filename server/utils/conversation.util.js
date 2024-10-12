@@ -54,8 +54,11 @@ const combinedStream = async function*(textStream, templateId, abortSignal, type
         const audioStream = await textToSpeech(fullResponse, templateId.voice);
         const audioIterator = audioStream[Symbol.asyncIterator]();
         let isTextStreamed = false;
+        let noOfIteration = 0;
+        let auidoChunkSize = audioStreamChunkSize;
 
         while (!isLastChunk) {
+            noOfIteration += 1;
             if (abortSignal.aborted) {
                 throw new DOMException('Stream aborted', 'AbortError');
             }
@@ -67,7 +70,15 @@ const combinedStream = async function*(textStream, templateId, abortSignal, type
                 audioBuffer = Buffer.concat([audioBuffer, value]);
             }
 
-            if(audioBuffer.length >= audioStreamChunkSize && !isTextStreamed) {
+            if(noOfIteration < 5) {
+                auidoChunkSize = audioStreamChunkSize / 8;
+            } else if(noOfIteration < 10) {
+                auidoChunkSize = audioStreamChunkSize / 5;
+            } else {
+                auidoChunkSize = audioStreamChunkSize;
+            }
+
+            if(audioBuffer.length >= auidoChunkSize && !isTextStreamed) {
                 isTextStreamed = true;
                 for (const textChunk of pendingTextStream) {
                     yield {
@@ -77,13 +88,13 @@ const combinedStream = async function*(textStream, templateId, abortSignal, type
                 }
             }
 
-            while (audioBuffer.length >= audioStreamChunkSize || (isLastChunk && audioBuffer.length > 0)) {
+            while (audioBuffer.length >= auidoChunkSize || (isLastChunk && audioBuffer.length > 0)) {
                 if (abortSignal.aborted) {
                     throw new DOMException('Stream aborted', 'AbortError');
                 }
 
-                const chunkToSend = audioBuffer.slice(0, audioStreamChunkSize);
-                audioBuffer = audioBuffer.slice(audioStreamChunkSize);
+                const chunkToSend = audioBuffer.slice(0, auidoChunkSize);
+                audioBuffer = audioBuffer.slice(auidoChunkSize);
 
                 yield {
                     audioStreamed: { content: chunkToSend.toString('base64') },
