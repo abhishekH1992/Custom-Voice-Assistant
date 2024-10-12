@@ -26,7 +26,6 @@ const chatResolver = {
                         userId
                     },
                 });
-console.log(new Date(data.feedbackLastGeneratedAt) < new Date(data.updatedAt));
                 if(!data.feedbackLastGeneratedAt || new Date(data.feedbackLastGeneratedAt) < new Date(data.updatedAt)) {
                     const cacheKey = `template:${data.templateId}`;
                     let template = await getRedisCached(cacheKey);
