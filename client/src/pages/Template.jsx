@@ -61,7 +61,7 @@ const Template = () => {
 
     useEffect(() => {
         if (enableTypes && enableTypes.types && enableTypes.types.length > 0) {
-            const firstType = enableTypes.types[0];
+            const firstType = enableTypes.types[2];
             setSelectedType(firstType);
         }
     }, [enableTypes]);
@@ -528,9 +528,15 @@ const Template = () => {
                         setIsCallActive(false);
                         handleStopRecording(false);
                     },
+                    // fftSize: 2048,
+                    // bufferLen: 2048,
+                    smoothingTimeConstant: 0.8,
+                    // minCaptureFreq: 150,
+                    // maxCaptureFreq: 3500,
                     noiseCaptureDuration: 300,
                     minNoiseLevel: 0.2,
-                    maxNoiseLevel: 0.8
+                    maxNoiseLevel: 0.8,
+                    // avgNoiseMultiplier: 1.4,
                 });
             })
             .catch(err => console.error('Error accessing microphone:', err));
