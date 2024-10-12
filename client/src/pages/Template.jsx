@@ -124,16 +124,14 @@ const Template = () => {
         isCallActiveRef.current = true;
         if (isPlaying) {
             setIsInterrupted(true);
-            audioJammer();
-            startTheCall();
-            // stopAudio().then(() => {
-                
-            // });
+            stopAudio().then(() => {
+                startTheCall();
+            });
         } else {
             setIsInterrupted(false);
             startTheCall();
         }
-    }, [isPlaying, startTheCall, audioJammer]);
+    }, [isPlaying, startTheCall, stopAudio]);
 
     const stopVoiceActivityDetection = useCallback(() => {
         recognition.stop();
@@ -147,10 +145,9 @@ const Template = () => {
 
     const handleStopListening = useCallback(() => {
         if(selectedType?.isContinous) stopVoiceActivityDetection();
-        stopAudio().then(() => {
-            if(!selectedType?.isContinous) stopListening();
-        });
-    }, [selectedType?.isContinous, stopAudio, stopListening, stopVoiceActivityDetection]);
+        audioJammer();
+        if(!selectedType?.isContinous) stopListening();
+    }, [selectedType?.isContinous, audioJammer, stopListening, stopVoiceActivityDetection]);
 
     useEffect(() => {
         scrollToBottom();
