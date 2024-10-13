@@ -45,6 +45,9 @@ const Template = () => {
     const shouldSendAudioRef = useRef(true);
     const messagesRef = useRef([]);
     const isActivityDetected = useRef(false);
+    const [currentType, setCurrentType] = useState();
+    const messageStartTimeRef = useRef(null);
+    const userStartTimeRef = useRef(null);
 
 
     const { data, loading } = useQuery(GET_TEMPLATE_BY_SLUG, {
@@ -63,6 +66,7 @@ const Template = () => {
         if (enableTypes && enableTypes.types && enableTypes.types.length > 0) {
             const firstType = enableTypes.types[2];
             setSelectedType(firstType);
+            setCurrentType(firstType.name);
         }
     }, [enableTypes]);
 
@@ -98,7 +102,17 @@ const Template = () => {
         setSelectedType(type);
         setIsModalOpen(false);
         setRecordingDuration(type.duration);
+        setCurrentType(type.name);
     };
+
+    const getCurrentTime = () => {
+        return new Date().toLocaleTimeString('en-NZ', { 
+            hour12: false, 
+            hour: '2-digit', 
+            minute: '2-digit',
+            second: '2-digit'
+        })
+    }
 
     const [sendMessage] = useMutation(SEND_MESSAGE);
     const [startRecording] = useMutation(START_RECORDING);
@@ -120,21 +134,25 @@ const Template = () => {
     }, [messages, currentStreamedMessage]);
 
     const { error: msgErr } = useSubscription(MESSAGE_SUBSCRIPTION, {
+        skip: !data?.templateBySlug?.id,
         variables: { templateId: data?.templateBySlug?.id },
         onSubscriptionData: ({ subscriptionData }) => {
             const { role, content: newContent } = subscriptionData?.data?.messageStreamed;
             if (newContent !== undefined && isActivityDetected.current === false) {
                 if (streamedMessageRef.current === '') {
                     setIsTyping(false);
+                    messageStartTimeRef.current = getCurrentTime();
                 }
                 streamedMessageRef.current += newContent;
                 setCurrentStreamedMessage({
                     role,
                     content: streamedMessageRef.current,
+                    type: currentType,
+                    timeStamp: messageStartTimeRef.current
                 });
                 isStreamingRef.current = true;
             } else if (isStreamingRef.current && isActivityDetected.current === false) {
-                if(!isEmpty(streamedMessageRef)) setMessages(prev => [...prev, { role: 'system', content: streamedMessageRef.current }]);
+                if(!isEmpty(streamedMessageRef)) setMessages(prev => [...prev, { role: 'system', content: streamedMessageRef.current, type: currentType, timeStamp: messageStartTimeRef.current }]);
                 setCurrentStreamedMessage('');
                 streamedMessageRef.current = '';
                 isStreamingRef.current = false;
@@ -144,7 +162,7 @@ const Template = () => {
 
     useEffect(() => {
         if (!isStreamingRef.current && !isEmpty(currentStreamedMessage)) {
-            setMessages(prev => [...prev, { role: 'system', content: currentStreamedMessage.content }]);
+            setMessages(prev => [...prev, { role: 'system', content: currentStreamedMessage.content, type: currentStreamedMessage.type, timeStamp: currentStreamedMessage.timeStamp }]);
             setCurrentStreamedMessage('');
             streamedMessageRef.current = '';
         }
@@ -162,10 +180,10 @@ const Template = () => {
 
     useEffect(() => {
         if (!isEmpty(userStreamedContent)) {
-            setMessages(prevMessages => [...prevMessages, { role: 'user', content: userStreamedContent }]);
+            setMessages(prevMessages => [...prevMessages, { role: 'user', content: userStreamedContent, type: currentType, timeStamp: userStartTimeRef.current || getCurrentTime() }]);
             setUserStreamedContent('');
         }
-    }, [userStreamedContent]);
+    }, [currentType, userStreamedContent]);
 
     const { error: audioErr} = useSubscription(AUDIO_SUBSCRIPTION, {
         variables: { templateId: data?.templateBySlug?.id },
@@ -281,6 +299,7 @@ const Template = () => {
                 });
             }
             await startRecording();
+            userStartTimeRef.current = getCurrentTime();
             setIsRecording(true);
             setCurrentStreamedMessage({});
             streamedMessageRef.current = '';
