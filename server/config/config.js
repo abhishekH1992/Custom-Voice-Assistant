@@ -22,10 +22,18 @@ module.exports = {
   production: {
     use_env_variable: "DATABASE_URL",
     dialect: "mysql",
+    dialectModule: require('mysql2'),
     dialectOptions: {
       ssl: {
-        rejectUnauthorized: true,
-      },
+        require: true,
+        rejectUnauthorized: false // Set this to false for now
+      }
     },
-  },
+    pool: {
+      max: 5,
+      min: 0,
+      acquire: 30000,
+      idle: 10000
+    }
+  }
 };
