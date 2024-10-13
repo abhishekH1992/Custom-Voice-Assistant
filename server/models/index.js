@@ -6,12 +6,31 @@ const basename = path.basename(__filename);
 const env = process.env.NODE_ENV || 'development';
 const config = require(__dirname + '/../config/config.js')[env];
 const db = {};
+const mysql2 = require('mysql2');
 
 let sequelize;
 if (config.use_env_variable) {
-  sequelize = new Sequelize(process.env[config.use_env_variable], config);
+  sequelize = new Sequelize(process.env[config.use_env_variable], {
+    ...config,
+    dialectModule: mysql2,
+    pool: {
+      max: 5,
+      min: 0,
+      acquire: 30000,
+      idle: 10000
+    }
+  });
 } else {
   sequelize = new Sequelize(config.database, config.username, config.password, config);
+}
+
+async function testConnection() {
+  try {
+    await sequelize.authenticate();
+    console.log('Database connection has been established successfully.');
+  } catch (error) {
+    console.error('Unable to connect to the database:', error);
+  }
 }
 
 fs
@@ -34,6 +53,8 @@ Object.keys(db).forEach(modelName => {
     db[modelName].associate(db);
   }
 });
+
+testConnection();
 
 db.sequelize = sequelize;
 db.Sequelize = Sequelize;
