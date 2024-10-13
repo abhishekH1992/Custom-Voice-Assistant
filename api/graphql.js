@@ -27,10 +27,10 @@ const authenticate = async (token) => {
 const server = new ApolloServer({
     schema,
     context: async ({ req }) => {
-        const token = req.headers.authorization || '';
-        const user = await authenticate(token);
-        const redis = await getRedisClient();
-        return { user, redis };
+      const token = req.headers.authorization || '';
+      const user = await authenticate(token);
+      const redis = await getRedisClient();
+      return { user, redis };
     },
 });
 
