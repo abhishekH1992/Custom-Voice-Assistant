@@ -202,6 +202,7 @@ const Template = () => {
     const { error: stopStreamErr} = useSubscription(STREAM_STOPPED_SUBSCRIPTION, {
         variables: { templateId: data?.templateBySlug?.id },
         onSubscriptionData: ({ subscriptionData }) => {
+            console.log(subscriptionData);
             const { templateId } = subscriptionData?.data?.streamStopped;
             if (templateId === data?.templateBySlug?.id) {
                 handleStreamStopped();
@@ -337,7 +338,6 @@ const Template = () => {
 
     useEffect(() => {
         if (messages.length > 0) {
-            console.log(messages);
             messagesRef.current = messages;
         }
     }, [messages]);
@@ -421,6 +421,7 @@ const Template = () => {
     useEffect(() => {
         let recordingTimer;
         let countdownTimer;
+        console.log(isCallActive, selectedType?.isAutomatic);
         if (isCallActive && selectedType && selectedType.isAutomatic && !isUserInitiatedStop) {
             if (isRecording) {
                 setRemainingTime(recordingDuration);
@@ -434,9 +435,11 @@ const Template = () => {
                     });
                 }, 1000);
                 recordingTimer = setTimeout(() => {
+                    console.log('stop')
                     handleStopRecording(false);
                 }, recordingDuration * 1000);
             } else if (isSystemAudioComplete) {
+                console.log('start')
                 handleStartRecording();
                 setIsSystemAudioComplete(false);
             }

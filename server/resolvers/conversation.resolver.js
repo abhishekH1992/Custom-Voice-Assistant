@@ -96,6 +96,7 @@ const conversationResolver = {
                 activeStreams.set(templateId, abortController);
 
                 const combinedStreamInstance = combinedStream(stream, templateId, abortController.signal);
+                console.log(combinedStreamInstance);
                 try {
                     for await (const part of combinedStreamInstance) {
                         if (part.messageStreamed) {

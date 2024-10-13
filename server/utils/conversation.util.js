@@ -91,6 +91,7 @@ const combinedStream = async function*(textStream, templateId, abortSignal) {
             audioBufferOffset += audioChunk.length;
             
             const currentChunkSize = chunkCount < INITIAL_CHUNKS ? INITIAL_AUDIO_CHUNK_SIZE : REGULAR_AUDIO_CHUNK_SIZE;
+            console.log(audioBufferOffset, currentChunkSize);
             
             while (audioBufferOffset >= currentChunkSize) {
                 const chunkToSend = audioBuffer.slice(0, currentChunkSize);
@@ -110,11 +111,12 @@ const combinedStream = async function*(textStream, templateId, abortSignal) {
                 }
             }
         }
-
-        // Stream any remaining audio
+        
+        // Send any remaining audio data
         if (audioBufferOffset > 0) {
+            const finalChunk = audioBuffer.slice(0, audioBufferOffset);
             yield {
-                audioStreamed: { content: audioBuffer.slice(0, audioBufferOffset).toString('base64') },
+                audioStreamed: { content: finalChunk.toString('base64') },
                 templateId
             };
         }
