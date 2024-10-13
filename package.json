@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node server/index.js",
     "dev": "nodemon server/index.js",
-    "build": "cd client && npm install && npm run build && cd ../server && npm install"
+    "build": "npm run build:client",
+    "build:client": "cd client && npm run build"
   },
   "keywords": [],
   "author": "",
@@ -34,8 +35,8 @@
     "redis": "^4.7.0",
     "sequelize": "^6.37.3",
     "sequelize-cli": "^6.6.2",
-    "ws": "^8.18.0",
-    "tunnel-ssh": "^4.1.6"
+    "tunnel-ssh": "^4.1.6",
+    "ws": "^8.18.0"
   },
   "devDependencies": {
     "nodemon": "^3.1.4"

@@ -20,33 +20,12 @@ module.exports = {
     dialect: "mysql"
   },
   production: {
-    username: process.env.DB_USERNAME,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME,
-    host: "127.0.0.1",
-    port: 3306,
+    use_env_variable: "DATABASE_URL",
     dialect: "mysql",
-    dialectModule: require('mysql2'),
     dialectOptions: {
       ssl: {
-        require: true,
-        rejectUnauthorized: false
-      }
+        rejectUnauthorized: true,
+      },
     },
-    pool: {
-      max: 5,
-      min: 0,
-      acquire: 30000,
-      idle: 10000
-    }
   },
-  ssh: {
-    host: process.env.SSH_HOST,
-    port: 17177,
-    username: process.env.SSH_USERNAME,
-    dstHost: process.env.DB_HOST,
-    dstPort: process.env.DB_PORT,
-    localHost: "127.0.0.1",
-    localPort: 3306
-  }
 };
