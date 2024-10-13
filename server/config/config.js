@@ -19,27 +19,16 @@ module.exports = {
     host: "localhost",
     dialect: "mysql"
   },
-  // production: {
-  //   use_env_variable: "DATABASE_URL",
-  //   dialect: "mysql",
-  //   dialectModule: require('mysql2'),
-  //   dialectOptions: {
-  //     ssl: {
-  //       require: true,
-  //       rejectUnauthorized: false // Set this to false for now
-  //     }
-  //   },
-  //   pool: {
-  //     max: 5,
-  //     min: 0,
-  //     acquire: 30000,
-  //     idle: 10000
-  //   }
-  // }
   production: {
     use_env_variable: "DATABASE_URL",
     dialect: "mysql",
     dialectModule: require('mysql2'),
+    dialectOptions: {
+      ssl: {
+        require: true,
+        rejectUnauthorized: true
+      }
+    },
     pool: {
       max: 5,
       min: 0,
