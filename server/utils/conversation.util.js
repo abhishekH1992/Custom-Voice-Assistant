@@ -1,5 +1,8 @@
 const { openai, audioStreamChunkSize } = require('./openai.util');
 const fs = require('fs');
+const { Buffer } = require('buffer');
+const stream = require('stream');
+const util = require('util');
 
 const textCompletion = async(model, messages, stream = false) => {
     const response =  await openai.chat.completions.create({
@@ -36,73 +39,99 @@ const textToSpeech = async function*(text, voice='alloy') {
 
 
 const combinedStream = async function*(textStream, templateId, abortSignal) {
-    let fullResponse = '';
-    let audioBuffer = Buffer.alloc(0);
-    let isLastChunk = false;
-    let pendingTextStream = [];
+    // Ensure audioStreamChunkSize is a number
+    const REGULAR_AUDIO_CHUNK_SIZE = typeof audioStreamChunkSize === 'string' 
+        ? parseInt(audioStreamChunkSize, 10) 
+        : audioStreamChunkSize;
+
+    if (isNaN(REGULAR_AUDIO_CHUNK_SIZE)) {
+        throw new Error(`Invalid audioStreamChunkSize: ${audioStreamChunkSize}`);
+    }
+
+    const INITIAL_AUDIO_CHUNK_SIZE = Math.floor(REGULAR_AUDIO_CHUNK_SIZE / 2);
+    const INITIAL_CHUNKS = 10;
+
+    const textBuffer = [];
+    let audioBuffer = Buffer.allocUnsafe(REGULAR_AUDIO_CHUNK_SIZE);
+    let audioBufferOffset = 0;
+    let chunkCount = 0;
+    let isTextStreamed = false;
 
     try {
         for await (const part of textStream) {
-            if (abortSignal.aborted) {
-                throw new DOMException('Stream aborted', 'AbortError');
-            }
+            if (abortSignal.aborted) throw new AbortError('Stream aborted');
             const content = part.choices[0]?.delta?.content || '';
-            fullResponse += content;
-            pendingTextStream.push(content);
-        }
-
-        const audioStream = await textToSpeech(fullResponse, templateId.voice);
-        const audioIterator = audioStream[Symbol.asyncIterator]();
-        let isTextStreamed = false;
-
-        while (!isLastChunk) {
-            if (abortSignal.aborted) {
-                throw new DOMException('Stream aborted', 'AbortError');
-            }
-
-            const { value, done } = await audioIterator.next();
-            isLastChunk = done;
-
-            if (value) {
-                audioBuffer = Buffer.concat([audioBuffer, value]);
-            }
-
-            if(audioBuffer.length >= audioStreamChunkSize && !isTextStreamed) {
-                isTextStreamed = true;
-                for (const textChunk of pendingTextStream) {
+            if (content) {
+                textBuffer.push(content);
+                if (!isTextStreamed) {
                     yield {
-                        messageStreamed: { role: 'system', content: textChunk },
+                        messageStreamed: { role: 'system', content },
                         templateId,
                     };
                 }
             }
+        }
 
-            while (audioBuffer.length >= audioStreamChunkSize || (isLastChunk && audioBuffer.length > 0)) {
-                if (abortSignal.aborted) {
-                    throw new DOMException('Stream aborted', 'AbortError');
-                }
+        isTextStreamed = true;
+        
+        const text = textBuffer.join('');
+        const audioGenerator = textToSpeech(text, templateId.voice);
 
-                const chunkToSend = audioBuffer.slice(0, audioStreamChunkSize);
-                audioBuffer = audioBuffer.slice(audioStreamChunkSize);
-
+        for await (const audioChunk of audioGenerator) {
+            if (abortSignal.aborted) throw new AbortError('Stream aborted');
+            
+            if (audioBufferOffset + audioChunk.length > audioBuffer.length) {
+                const newSize = Math.max(audioBuffer.length * 2, audioBufferOffset + audioChunk.length);
+                const newBuffer = Buffer.allocUnsafe(newSize);
+                audioBuffer.copy(newBuffer, 0, 0, audioBufferOffset);
+                audioBuffer = newBuffer;
+            }
+            
+            audioChunk.copy(audioBuffer, audioBufferOffset);
+            audioBufferOffset += audioChunk.length;
+            
+            const currentChunkSize = chunkCount < INITIAL_CHUNKS ? INITIAL_AUDIO_CHUNK_SIZE : REGULAR_AUDIO_CHUNK_SIZE;
+            
+            while (audioBufferOffset >= currentChunkSize) {
+                const chunkToSend = audioBuffer.slice(0, currentChunkSize);
                 yield {
                     audioStreamed: { content: chunkToSend.toString('base64') },
                     templateId
                 };
-
-                if (isLastChunk && audioBuffer.length === 0) {
-                    break;
+                
+                audioBuffer.copy(audioBuffer, 0, currentChunkSize, audioBufferOffset);
+                audioBufferOffset -= currentChunkSize;
+                chunkCount++;
+                
+                if (audioBufferOffset > 0 && audioBufferOffset < audioBuffer.length / 2) {
+                    const newBuffer = Buffer.allocUnsafe(audioBuffer.length);
+                    audioBuffer.copy(newBuffer, 0, 0, audioBufferOffset);
+                    audioBuffer = newBuffer;
                 }
             }
+        }
+
+        // Stream any remaining audio
+        if (audioBufferOffset > 0) {
+            yield {
+                audioStreamed: { content: audioBuffer.slice(0, audioBufferOffset).toString('base64') },
+                templateId
+            };
         }
     } catch (error) {
         if (error.name === 'AbortError') {
             console.log(`Stream for template ${templateId} was aborted`);
         } else {
             console.error('Error in combinedStream:', error);
+            throw error; // Re-throw the error to be caught by the caller
         }
-    } finally {
-        // Perform any necessary cleanup here
+    }
+};
+
+class AbortError extends Error {
+    constructor(message) {
+        super(message);
+        this.name = 'AbortError';
     }
 }
 

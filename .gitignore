@@ -10,5 +10,7 @@ package-lock.json
 .vercel
 .DS_Store
 .env.prod
+.env.production
 
 template.jsx.design.bkp
+jammer.bkp

@@ -62,6 +62,9 @@ const ChatMessage = ({ message }) => {
                     </ReactMarkdown>
                 </div>
             </div>
+            <div className="flex justify-end text-sm text-gray-500">
+                <div className="">{message.timeStamp}</div>
+            </div>
         </div>
     );
 };

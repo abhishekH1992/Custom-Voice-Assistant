@@ -44,6 +44,10 @@ const Template = () => {
     const [isContinuousMode, setIsContinuousMode] = useState(false);
     const shouldSendAudioRef = useRef(true);
     const messagesRef = useRef([]);
+    const isActivityDetected = useRef(false);
+    const [currentType, setCurrentType] = useState();
+    const messageStartTimeRef = useRef(null);
+    const userStartTimeRef = useRef(null);
 
 
     const { data, loading } = useQuery(GET_TEMPLATE_BY_SLUG, {
@@ -60,8 +64,10 @@ const Template = () => {
 
     useEffect(() => {
         if (enableTypes && enableTypes.types && enableTypes.types.length > 0) {
-            const firstType = enableTypes.types[0];
+            const firstType = enableTypes.types[2];
             setSelectedType(firstType);
+            setCurrentType(firstType.name);
+            console.log(firstType.name);
         }
     }, [enableTypes]);
 
@@ -75,7 +81,7 @@ const Template = () => {
     useEffect(() => {
         if (savedChat && savedChat.getSavedChatById) {
             const { chats, name } = savedChat.getSavedChatById;
-            const transformedChats = Object.values(chats).filter(chat => typeof chat === 'object').map(({ role, content }) => ({ role, content }));
+            const transformedChats = Object.values(chats).filter(chat => typeof chat === 'object').map(({ role, content, type, timeStamp }) => ({ role, content, type, timeStamp }));
             setMessages(transformedChats);
             setChatName(name || data?.templateBySlug?.aiRole);
         }
@@ -97,7 +103,17 @@ const Template = () => {
         setSelectedType(type);
         setIsModalOpen(false);
         setRecordingDuration(type.duration);
+        setCurrentType(type.name);
     };
+
+    const getCurrentTime = () => {
+        return new Date().toLocaleTimeString('en-NZ', { 
+            hour12: false, 
+            hour: '2-digit', 
+            minute: '2-digit',
+            second: '2-digit'
+        })
+    }
 
     const [sendMessage] = useMutation(SEND_MESSAGE);
     const [startRecording] = useMutation(START_RECORDING);
@@ -118,22 +134,26 @@ const Template = () => {
         scrollToBottom();
     }, [messages, currentStreamedMessage]);
 
-    useSubscription(MESSAGE_SUBSCRIPTION, {
+    const { error: msgErr } = useSubscription(MESSAGE_SUBSCRIPTION, {
+        skip: !data?.templateBySlug?.id,
         variables: { templateId: data?.templateBySlug?.id },
         onSubscriptionData: ({ subscriptionData }) => {
             const { role, content: newContent } = subscriptionData?.data?.messageStreamed;
-            if (newContent !== undefined) {
+            if (newContent !== undefined && isActivityDetected.current === false) {
                 if (streamedMessageRef.current === '') {
                     setIsTyping(false);
+                    messageStartTimeRef.current = getCurrentTime();
                 }
                 streamedMessageRef.current += newContent;
                 setCurrentStreamedMessage({
                     role,
                     content: streamedMessageRef.current,
+                    type: currentType,
+                    timeStamp: messageStartTimeRef.current
                 });
                 isStreamingRef.current = true;
-            } else if (isStreamingRef.current) {
-                if(!isEmpty(streamedMessageRef)) setMessages(prev => [...prev, { role: 'system', content: streamedMessageRef.current }]);
+            } else if (isStreamingRef.current && isActivityDetected.current === false) {
+                if(!isEmpty(streamedMessageRef)) setMessages(prev => [...prev, { role: 'system', content: streamedMessageRef.current, type: currentType, timeStamp: messageStartTimeRef.current }]);
                 setCurrentStreamedMessage('');
                 streamedMessageRef.current = '';
                 isStreamingRef.current = false;
@@ -143,13 +163,13 @@ const Template = () => {
 
     useEffect(() => {
         if (!isStreamingRef.current && !isEmpty(currentStreamedMessage)) {
-            setMessages(prev => [...prev, { role: 'system', content: currentStreamedMessage.content }]);
+            setMessages(prev => [...prev, { role: 'system', content: currentStreamedMessage.content, type: currentStreamedMessage.type, timeStamp: currentStreamedMessage.timeStamp }]);
             setCurrentStreamedMessage('');
             streamedMessageRef.current = '';
         }
     }, [currentStreamedMessage, messages]);
 
-    useSubscription(USER_SUBSCRIPTION, {
+    const { error: userErr } = useSubscription(USER_SUBSCRIPTION, {
         variables: { templateId: data?.templateBySlug?.id },
         onSubscriptionData: ({ subscriptionData }) => {
             const { content } = subscriptionData?.data?.userStreamed || {};
@@ -161,16 +181,16 @@ const Template = () => {
 
     useEffect(() => {
         if (!isEmpty(userStreamedContent)) {
-            setMessages(prevMessages => [...prevMessages, { role: 'user', content: userStreamedContent }]);
+            setMessages(prevMessages => [...prevMessages, { role: 'user', content: userStreamedContent, type: currentType, timeStamp: userStartTimeRef.current || getCurrentTime() }]);
             setUserStreamedContent('');
         }
-    }, [userStreamedContent]);
+    }, [currentType, userStreamedContent]);
 
-    useSubscription(AUDIO_SUBSCRIPTION, {
+    const { error: audioErr} = useSubscription(AUDIO_SUBSCRIPTION, {
         variables: { templateId: data?.templateBySlug?.id },
         onSubscriptionData: ({ subscriptionData }) => {
             const { content } = subscriptionData?.data?.audioStreamed;
-            if(content) {
+            if(content && isActivityDetected.current === false) {
                 audioQueue.current.push(content);
                 if (!isPlayingAudio.current) {
                     playNextAudio();
@@ -179,7 +199,7 @@ const Template = () => {
         }
     });
 
-    useSubscription(STREAM_STOPPED_SUBSCRIPTION, {
+    const { error: stopStreamErr} = useSubscription(STREAM_STOPPED_SUBSCRIPTION, {
         variables: { templateId: data?.templateBySlug?.id },
         onSubscriptionData: ({ subscriptionData }) => {
             const { templateId } = subscriptionData?.data?.streamStopped;
@@ -189,8 +209,15 @@ const Template = () => {
         }
     });
 
+    useEffect(() => {
+        if(msgErr) console.log('MESSAGE_STREAM: '+msgErr);
+        if(userErr) console.log('USER_STREAM: '+msgErr);
+        if(audioErr) console.log('AUDIO_STREAM: '+msgErr);
+        if(stopStreamErr) console.log('STREAM_STOPPED: '+stopStreamErr);
+    })
+
     const playNextAudio = useCallback(() => {
-        if ((audioQueue.current.length > 0 && !selectedType?.isAutomatic && !selectedType?.isContinous) || (audioQueue.current.length > 0 && !isUserInitiatedStop && (selectedType?.isAutomatic || selectedType?.isContinous))) {
+        if ((audioQueue.current.length > 0 && !selectedType?.isAutomatic && !selectedType?.isContinous) || (audioQueue.current.length > 0 && !isUserInitiatedStop && (selectedType?.isAutomatic || selectedType?.isContinous) && isActivityDetected.current === false)) {
             isPlayingAudio.current = true;
             const audioContent = audioQueue.current.shift();
             const audioChunk = base64ToArrayBuffer(audioContent);
@@ -250,8 +277,8 @@ const Template = () => {
     const handleSendMessage = useCallback((message) => {
         setMessages(prevMessages => {
             const newMessages = !isEmpty(currentStreamedMessage)
-                ? [...prevMessages, { role: 'system', content: currentStreamedMessage.content }, { role: 'user', content: message }]
-                : [...prevMessages, { role: 'user', content: message }];
+                ? [...prevMessages, { role: 'system', content: currentStreamedMessage.content, type: currentStreamedMessage.type, timeStamp: currentStreamedMessage.timeStamp }, { role: 'user', content: message, type: currentType, timeStamp: getCurrentTime() }]
+                : [...prevMessages, { role: 'user', content: message, type: currentType, timeStamp: getCurrentTime() }];
             sendMessageToServer(newMessages);
             return newMessages;
         });
@@ -261,18 +288,19 @@ const Template = () => {
         isStreamingRef.current = false;
         setIsTyping(true);
 
-    }, [currentStreamedMessage, sendMessageToServer]);
+    }, [currentStreamedMessage, currentType, sendMessageToServer]);
 
     const handleStartRecording = useCallback(async () => {
         try {
             if (!isEmpty(currentStreamedMessage) || streamedMessageRef.current !== '') {
                 setMessages(prevMessages => {
-                    const newMessages = [...prevMessages, { role: currentStreamedMessage.role || 'system', content: currentStreamedMessage.content || streamedMessageRef.current }];
+                    const newMessages = [...prevMessages, { role: currentStreamedMessage.role || 'system', content: currentStreamedMessage.content || streamedMessageRef.current, type: currentStreamedMessage.type || currentType, timeStamp: currentStreamedMessage.timeStamp || getCurrentTime() }];
                     messagesRef.current = newMessages;
                     return newMessages;
                 });
             }
             await startRecording();
+            userStartTimeRef.current = getCurrentTime();
             setIsRecording(true);
             setCurrentStreamedMessage({});
             streamedMessageRef.current = '';
@@ -298,7 +326,7 @@ const Template = () => {
         } catch (error) {
             console.error('Error starting recording:', error);
         }
-    }, [currentStreamedMessage, startRecording, sendAudioData]);
+    }, [currentStreamedMessage, startRecording, currentType, sendAudioData]);
 
     const stopVoiceActivityDetection = useCallback(() => {
         if (vadRef.current) {
@@ -309,6 +337,7 @@ const Template = () => {
 
     useEffect(() => {
         if (messages.length > 0) {
+            console.log(messages);
             messagesRef.current = messages;
         }
     }, [messages]);
@@ -349,6 +378,7 @@ const Template = () => {
             stopVoiceActivityDetection();
             setIsContinuousMode(false);
         }
+        console.log(messagesRef);
         setIsUserInitiatedStop(isUserInitiated);
         if ((mediaRecorderRef.current && !selectedType.isAutomatic && !selectedType.isContinous) || (mediaRecorderRef.current && !isUserInitiated && (selectedType?.isAutomatic || selectedType?.isContinous))) {
             mediaRecorderRef.current.stop();
@@ -364,28 +394,29 @@ const Template = () => {
         }
         if (isUserInitiated && (selectedType?.isAutomatic || selectedType?.isContinous)) {
             handleStreamStopped();
-            setIsTyping(false);
-            if (isStreamingRef.current) {
-                isStreamingRef.current = false;
-                setCurrentStreamedMessage({});
-                streamedMessageRef.current = '';
-            }
-            audioQueue.current = [];
-            if (audioRef.current) {
-                audioRef.current.pause();
-                audioRef.current.src = '';
-            }
-            isPlayingAudio.current = false;
-            setIsSystemAudioComplete(true);
-            if (isCallActive) {
-                setIsCallActive(false);
-            }
-            if (mediaRecorderRef.current) {
-                mediaRecorderRef.current.stop();
-                mediaRecorderRef.current = null;
-            }
+            // isActivityDetected.current = false;
+            // setIsTyping(false);
+            // if (isStreamingRef.current) {
+            //     isStreamingRef.current = false;
+            //     setCurrentStreamedMessage({});
+            //     streamedMessageRef.current = '';
+            // }
+            // audioQueue.current = [];
+            // if (audioRef.current) {
+            //     audioRef.current.pause();
+            //     audioRef.current.src = '';
+            // }
+            // isPlayingAudio.current = false;
+            // setIsSystemAudioComplete(true);
+            // if (isCallActive) {
+            //     setIsCallActive(false);
+            // }
+            // if (mediaRecorderRef.current) {
+            //     mediaRecorderRef.current.stop();
+            //     mediaRecorderRef.current = null;
+            // }
         }
-    }, [selectedType, stopVoiceActivityDetection, stopRecording, data?.templateBySlug?.id, isCallActive, handleStreamStopped]);
+    }, [selectedType, stopVoiceActivityDetection, stopRecording, data?.templateBySlug?.id, handleStreamStopped]);
 
     useEffect(() => {
         let recordingTimer;
@@ -484,8 +515,21 @@ const Template = () => {
     }
 
     const onFeedback = () => {
-        navigate(`/analytics/${templateSlug}/${savedChatId}`);
+        window.location.assign(`/analytics/${templateSlug}/${savedChatId}`);
     }
+
+    const stopAudioPlayback = useCallback(() => {
+        isActivityDetected.current = true;
+        audioQueue.current = [];
+        if (audioRef.current) {
+            audioRef.current.pause();
+            audioRef.current.src = '';
+        }
+        isPlayingAudio.current = false;
+        setIsSystemAudioComplete(true);
+        setIsCallActive(true);
+        setIsUserInitiatedStop(false);
+    }, []);
 
     const startVoiceActivityDetection = useCallback(() => {
         if (vadRef.current) return;
@@ -496,32 +540,34 @@ const Template = () => {
 
                 vadRef.current = vad(audioContext, stream, {
                     onVoiceStart: () => {
-                        audioQueue.current = [];
-                        if (audioRef.current) {
-                            audioRef.current.pause();
-                            audioRef.current.src = '';
-                        }
+                        console.log('Start: '+isActivityDetected.current);
+                        stopAudioPlayback();
                         if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
                             mediaRecorderRef.current.stop();
                         }
-                        isPlayingAudio.current = false;
-                        setIsSystemAudioComplete(true);
-                        setIsCallActive(true);
-                        setIsSystemAudioComplete(false);
-                        setIsUserInitiatedStop(false);
                         handleStartRecording();
                     },
                     onVoiceStop: () => {
+                        setTimeout(() => {
+                            isActivityDetected.current = false;
+                        }, 100);
+                        console.log('Stopped: '+isActivityDetected.current);
                         setIsCallActive(false);
                         handleStopRecording(false);
                     },
-                    noiseCaptureDuration: 1000,
-                    minNoiseLevel: 0.2,
-                    maxNoiseLevel: 0.7
+                    // fftSize: 2048,
+                    // bufferLen: 2048,
+                    smoothingTimeConstant: 0.9,
+                    // minCaptureFreq: 150,
+                    // maxCaptureFreq: 3500,
+                    noiseCaptureDuration: 300,
+                    minNoiseLevel: 0.4,
+                    maxNoiseLevel: 0.8,
+                    // avgNoiseMultiplier: 1.4,
                 });
             })
             .catch(err => console.error('Error accessing microphone:', err));
-    }, [handleStartRecording, handleStopRecording]);
+    }, [handleStartRecording, handleStopRecording, stopAudioPlayback]);
 
     useEffect(() => {
         return () => {
@@ -574,7 +620,7 @@ const Template = () => {
                         <ChatMessage message={{ role: 'user', content: userStreamedContent }} />
                     )}
                     {!isEmpty(currentStreamedMessage) && currentStreamedMessage.content &&  (
-                        <ChatMessage message={{ role: currentStreamedMessage.role, content: currentStreamedMessage.content }} />
+                        <ChatMessage message={{ role: currentStreamedMessage.role, content: currentStreamedMessage.content, timeStamp: currentStreamedMessage.timeStamp, type: currentStreamedMessage.type }} />
                     )}
                     {isRecording && isEmpty(currentStreamedMessage) && (
                         <ChatMessage message={{ role: 'user', content: selectedType.isAutomatic ? `Listening...(${remainingTime.toString()} seconds remaining)` : 'Listening...' }} />
