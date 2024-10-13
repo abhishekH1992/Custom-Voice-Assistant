@@ -67,6 +67,7 @@ const Template = () => {
             const firstType = enableTypes.types[2];
             setSelectedType(firstType);
             setCurrentType(firstType.name);
+            console.log(firstType.name);
         }
     }, [enableTypes]);
 
@@ -80,7 +81,7 @@ const Template = () => {
     useEffect(() => {
         if (savedChat && savedChat.getSavedChatById) {
             const { chats, name } = savedChat.getSavedChatById;
-            const transformedChats = Object.values(chats).filter(chat => typeof chat === 'object').map(({ role, content }) => ({ role, content }));
+            const transformedChats = Object.values(chats).filter(chat => typeof chat === 'object').map(({ role, content, type, timeStamp }) => ({ role, content, type, timeStamp }));
             setMessages(transformedChats);
             setChatName(name || data?.templateBySlug?.aiRole);
         }
@@ -276,8 +277,8 @@ const Template = () => {
     const handleSendMessage = useCallback((message) => {
         setMessages(prevMessages => {
             const newMessages = !isEmpty(currentStreamedMessage)
-                ? [...prevMessages, { role: 'system', content: currentStreamedMessage.content }, { role: 'user', content: message }]
-                : [...prevMessages, { role: 'user', content: message }];
+                ? [...prevMessages, { role: 'system', content: currentStreamedMessage.content, type: currentStreamedMessage.type, timeStamp: currentStreamedMessage.timeStamp }, { role: 'user', content: message, type: currentType, timeStamp: getCurrentTime() }]
+                : [...prevMessages, { role: 'user', content: message, type: currentType, timeStamp: getCurrentTime() }];
             sendMessageToServer(newMessages);
             return newMessages;
         });
@@ -287,13 +288,13 @@ const Template = () => {
         isStreamingRef.current = false;
         setIsTyping(true);
 
-    }, [currentStreamedMessage, sendMessageToServer]);
+    }, [currentStreamedMessage, currentType, sendMessageToServer]);
 
     const handleStartRecording = useCallback(async () => {
         try {
             if (!isEmpty(currentStreamedMessage) || streamedMessageRef.current !== '') {
                 setMessages(prevMessages => {
-                    const newMessages = [...prevMessages, { role: currentStreamedMessage.role || 'system', content: currentStreamedMessage.content || streamedMessageRef.current }];
+                    const newMessages = [...prevMessages, { role: currentStreamedMessage.role || 'system', content: currentStreamedMessage.content || streamedMessageRef.current, type: currentStreamedMessage.type || currentType, timeStamp: currentStreamedMessage.timeStamp || getCurrentTime() }];
                     messagesRef.current = newMessages;
                     return newMessages;
                 });
@@ -325,7 +326,7 @@ const Template = () => {
         } catch (error) {
             console.error('Error starting recording:', error);
         }
-    }, [currentStreamedMessage, startRecording, sendAudioData]);
+    }, [currentStreamedMessage, startRecording, currentType, sendAudioData]);
 
     const stopVoiceActivityDetection = useCallback(() => {
         if (vadRef.current) {
@@ -336,6 +337,7 @@ const Template = () => {
 
     useEffect(() => {
         if (messages.length > 0) {
+            console.log(messages);
             messagesRef.current = messages;
         }
     }, [messages]);
@@ -376,6 +378,7 @@ const Template = () => {
             stopVoiceActivityDetection();
             setIsContinuousMode(false);
         }
+        console.log(messagesRef);
         setIsUserInitiatedStop(isUserInitiated);
         if ((mediaRecorderRef.current && !selectedType.isAutomatic && !selectedType.isContinous) || (mediaRecorderRef.current && !isUserInitiated && (selectedType?.isAutomatic || selectedType?.isContinous))) {
             mediaRecorderRef.current.stop();
@@ -617,7 +620,7 @@ const Template = () => {
                         <ChatMessage message={{ role: 'user', content: userStreamedContent }} />
                     )}
                     {!isEmpty(currentStreamedMessage) && currentStreamedMessage.content &&  (
-                        <ChatMessage message={{ role: currentStreamedMessage.role, content: currentStreamedMessage.content }} />
+                        <ChatMessage message={{ role: currentStreamedMessage.role, content: currentStreamedMessage.content, timeStamp: currentStreamedMessage.timeStamp, type: currentStreamedMessage.type }} />
                     )}
                     {isRecording && isEmpty(currentStreamedMessage) && (
                         <ChatMessage message={{ role: 'user', content: selectedType.isAutomatic ? `Listening...(${remainingTime.toString()} seconds remaining)` : 'Listening...' }} />
