@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node server/index.js",
     "dev": "nodemon server/index.js",
-    "build": "npm install && cd client && npm install && npm run build && cd .. && cd server && npx sequelize-cli db:migrate && && npx sequelize-cli db:seed:all && cd .."
+    "build": "npm install && npx sequelize-cli db:migrate && npx sequelize-cli db:seed:all"
   },
   "keywords": [],
   "author": "",

@@ -42,34 +42,24 @@ async function startServer() {
 
     await server.start();
 
-    // Apply CORS middleware to all routes
-    app.use(cors());
+    // Configure CORS
+    const corsOptions = {
+        origin: process.env.REACT_APP_URL || 'http://localhost:3000', // Replace with your React app's URL
+        credentials: true
+    };
+
+    app.use(cors(corsOptions));
 
     app.use(
-        '/api/graphql',
+        '/graphql',
         express.json(),
         expressMiddleware(server)
     );
 
-    // Serve static files from the React app
-    app.use(express.static(path.join(__dirname, '../client/build')));
-
-    // API routes should be defined before the "catchall" route
-    // Add your other API routes here if any
-
-    // The "catchall" handler: for any request that doesn't
-    // match one above, send back React's index.html file.
-    app.get('*', (req, res) => {
-        res.sendFile(path.join(__dirname, '../client/build/index.html'));
-    });
-
     const PORT = process.env.PORT || 5000;
 
-    const httpServer = http.createServer(app);
-
-    httpServer.listen(PORT, () => {
-        console.log(`🚀 Server ready at http://localhost:${PORT}`);
-        console.log(`🚀 GraphQL endpoint: http://localhost:${PORT}/graphql`);
+    app.listen(PORT, () => {
+        console.log(`🚀 Server ready at http://localhost:${PORT}/graphql`);
     });
 }
 
