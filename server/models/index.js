@@ -10,9 +10,17 @@ const mysql2 = require('mysql2');
 
 let sequelize;
 if (config.use_env_variable) {
-  sequelize = new Sequelize(process.env[config.use_env_variable], {
-    ...config,
+  const databaseUrl = new URL(process.env[config.use_env_variable]);
+  sequelize = new Sequelize(databaseUrl.pathname.substr(1), databaseUrl.username, databaseUrl.password, {
+    host: databaseUrl.hostname,
+    port: databaseUrl.port,
+    dialect: 'mysql',
     dialectModule: mysql2,
+    dialectOptions: {
+      ssl: {
+        rejectUnauthorized: true,
+      }
+    },
     pool: {
       max: 5,
       min: 0,
