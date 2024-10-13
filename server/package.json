@@ -1,0 +1,45 @@
+{
+    "name": "akoplus-react",
+    "version": "1.0.0",
+    "description": "ReactAPP",
+    "main": "server/index.js",
+    "scripts": {
+      "start": "node server/index.js",
+      "dev": "nodemon server/index.js",
+      "build": "npm install && npx sequelize-cli db:migrate && npx sequelize-cli db:seed:all"
+    },
+    "keywords": [],
+    "author": "",
+    "license": "ISC",
+    "dependencies": {
+      "@apollo/server": "^4.11.0",
+      "@as-integrations/h3": "^1.2.1",
+      "@graphql-tools/merge": "^9.0.6",
+      "@graphql-tools/schema": "^10.0.6",
+      "axios": "^1.7.3",
+      "bcrypt": "^5.1.1",
+      "bcryptjs": "^2.4.3",
+      "cookie-parser": "^1.4.6",
+      "dotenv": "^16.4.5",
+      "express": "^4.19.2",
+      "express-session": "^1.18.0",
+      "graphql": "^16.9.0",
+      "graphql-passport": "^0.6.8",
+      "graphql-subscriptions": "^2.0.0",
+      "graphql-ws": "^5.16.0",
+      "ioredis": "^5.4.1",
+      "jsonwebtoken": "^9.0.2",
+      "mysql2": "^3.11.3",
+      "openai": "^4.56.1",
+      "passport": "^0.7.0",
+      "redis": "^4.7.0",
+      "sequelize": "^6.37.3",
+      "sequelize-cli": "^6.6.2",
+      "tunnel-ssh": "^4.1.6",
+      "ws": "^8.18.0"
+    },
+    "devDependencies": {
+      "nodemon": "^3.1.4"
+    }
+  }
+  
