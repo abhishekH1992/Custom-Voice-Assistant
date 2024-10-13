@@ -20,9 +20,5 @@
       "src": "/(.*)",
       "dest": "client/build/$1"
     }
-  ],
-  "env": {
-    "REDIS_URL": "@redis-url",
-    "CACHE_LIFE_LONG": "3600"
-  }
+  ]
 }
