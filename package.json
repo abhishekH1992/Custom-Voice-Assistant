@@ -6,13 +6,14 @@
   "scripts": {
     "start": "node server/index.js",
     "dev": "nodemon server/index.js",
-    "build": "cd client && npm install && npm run build && cd ../server && npm install && npx sequelize-cli db:migrate && npx sequelize-cli db:seed:all"
+    "build": "npm install && cd client && npm install && npm run build && cd .. && npx sequelize-cli db:migrate && && npx sequelize-cli db:seed:all"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
     "@apollo/server": "^4.11.0",
+    "@as-integrations/h3": "^1.2.1",
     "@graphql-tools/merge": "^9.0.6",
     "@graphql-tools/schema": "^10.0.6",
     "axios": "^1.7.3",
