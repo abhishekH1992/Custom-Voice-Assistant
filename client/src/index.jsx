@@ -15,6 +15,7 @@ const root = ReactDOM.createRoot(
     document.getElementById('root')
 );
 
+// Set up the backend URLs
 const httpUri = process.env.NODE_ENV === 'production' ? '/graphql' : 'http://localhost:5000/graphql';
 const wsUri = process.env.NODE_ENV === 'production' ? 'wss://' + window.location.host + '/graphql' : 'ws://localhost:5000/graphql';
 
