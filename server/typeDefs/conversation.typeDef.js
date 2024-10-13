@@ -2,11 +2,15 @@ const conversationTypeDef = `#graphql
     input InputMessage {
         role: String!,
         content: String!
+        type: String!
+        timeStamp: String!
     }
 
     type OutputMessage {
         role: String!,
         content: String!
+        type: String!
+        timeStamp: String!
     }
 
     type UserStreamedPayload {

@@ -9,6 +9,8 @@ export const GET_SAVED_CHAT = gql`
             chats {
                 role
                 content
+                type
+                timeStamp
             }
             name
         }
@@ -25,6 +27,8 @@ export const GET_SAVED_CHAT_AND_GENERATE_FEEDBACK = gql`
             chats {
                 role
                 content
+                type
+                timeStamp
             }
             feedback {
                 accentEmotionAnalysis {
