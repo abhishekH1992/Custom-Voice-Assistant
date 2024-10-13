@@ -7,9 +7,12 @@ dotenv.config();
 const userResolver = {
     Query: {
         me: async (_, __, { user }) => {
+            console.log('me resolver called, user:', user);
             if (!user) {
+                console.log('No user in context, throwing error');
                 throw new Error('Not authenticated');
             }
+            console.log('Returning user:', user);
             return user;
         },
     },
