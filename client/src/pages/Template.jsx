@@ -515,7 +515,7 @@ const Template = () => {
     }
 
     const onFeedback = () => {
-        navigate(`/analytics/${templateSlug}/${savedChatId}`);
+        window.location.assign(`/analytics/${templateSlug}/${savedChatId}`);
     }
 
     const stopAudioPlayback = useCallback(() => {
