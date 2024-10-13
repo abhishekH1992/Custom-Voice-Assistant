@@ -2,27 +2,27 @@
   "version": 2,
   "builds": [
     {
-      "src": "server/index.js",
-      "use": "@vercel/node"
-    },
-    {
       "src": "client/package.json",
       "use": "@vercel/static-build",
       "config": { "distDir": "build" }
+    },
+    {
+      "src": "api/graphql.js",
+      "use": "@vercel/node"
     }
   ],
   "routes": [
     {
       "src": "/graphql",
-      "dest": "server/index.js"
-    },
-    {
-      "src": "/health",
-      "dest": "server/index.js"
+      "dest": "api/graphql.js"
     },
     {
       "src": "/(.*)",
-      "dest": "server/index.js"
+      "dest": "client/build/$1"
     }
-  ]
+  ],
+  "env": {
+    "REDIS_URL": "@redis-url",
+    "CACHE_LIFE_LONG": "3600"
+  }
 }

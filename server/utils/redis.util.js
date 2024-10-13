@@ -1,9 +1,6 @@
-const dotenv = require('dotenv');
 const Redis = require('redis');
 
-dotenv.config();
-
-const DOMAIN = 'convo.akoplus.co.nz';
+const DOMAIN = 'akoplus.vercel.app';
 const NAMESPACE = `${DOMAIN}:`;
 const isProduction = process.env.NODE_ENV === 'production';
 
@@ -108,4 +105,4 @@ const clearAllCache = async () => {
     }
 };
 
-module.exports = { getRedisCached, addRedisCached, clearCache, clearAllCache };
+module.exports = { getRedisCached, addRedisCached, clearCache, clearAllCache, getRedisClient };
