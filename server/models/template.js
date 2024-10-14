@@ -5,7 +5,7 @@ const {
 module.exports = (sequelize, DataTypes) => {
     class Template extends Model {
         static associate(models) {
-            Template.belongsTo(models.Voice, { foreignKey: 'aiVoice', as: 'voice' });
+            Template.belongsTo(models.Voice, { foreignKey: 'aiVoice', as: 'voice', constraints: false });
         }
     }
     Template.init({

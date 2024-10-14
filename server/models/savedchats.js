@@ -12,7 +12,8 @@ module.exports = (sequelize, DataTypes) => {
       // define association here
       SavedChats.belongsTo(models.Template, {
         foreignKey: 'templateId',
-        as: 'template'
+        as: 'template',
+        constraints: false,
       });
     }
   }
