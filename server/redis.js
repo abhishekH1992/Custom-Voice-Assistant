@@ -1,4 +1,4 @@
-const Redis = require('@upstash/redis');
+const { Redis } = require('@upstash/redis');
 
 let redis;
 
