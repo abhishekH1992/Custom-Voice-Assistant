@@ -37,6 +37,7 @@ async function startServer() {
     const server = new ApolloServer({
         schema,
         context: async ({ req }) => {
+            console.log('startServer', req);
             const token = req.headers.authorization || '';
             const user = await authenticate(token);
             console.log('startServer user', user)
