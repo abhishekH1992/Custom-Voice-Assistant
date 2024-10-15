@@ -3,14 +3,14 @@ require('dotenv').config();
 module.exports = {
   development: {
     username: "root",
-    password: "",
+    password: "root",
     database: "akoplus",
     host: "localhost",
     dialect: "mysql",
     port: 3306,
-    // dialectOptions: {
-    //   socketPath : "/Applications/MAMP/tmp/mysql/mysql.sock"
-    // },
+    dialectOptions: {
+      socketPath : "/Applications/MAMP/tmp/mysql/mysql.sock"
+    },
   },
   test: {
     username: "root",

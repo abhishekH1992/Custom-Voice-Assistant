@@ -10,7 +10,6 @@ const { User } = require('./models');
 const mergedTypeDef = require('./typeDefs/index.js');
 const mergedResolver = require('./resolvers/index.js');
 const redis = require('./redis');
-const mysql = require('mysql2');
 
 const app = express();
 
@@ -33,21 +32,6 @@ const authenticate = async (token) => {
         return null;
     }
 };
-
-const connection = mysql.createConnection(process.env.DATABASE_URL)
-
-// simple query
-connection.query('show tables', function (err, results, fields) {
-  console.log(results) // results contains rows returned by server
-  console.log(fields) // fields contains extra metadata about results, if available
-})
-
-// Example with placeholders
-connection.query('select 1 from dual where ? = ?', [1, 1], function (err, results) {
-  console.log(results)
-})
-
-connection.end();
 
 async function startServer() {
     const server = new ApolloServer({

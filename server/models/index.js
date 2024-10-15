@@ -9,7 +9,8 @@ const db = {};
 const mysql2 = require('mysql2');
 
 let sequelize;
-if (config.use_env_variable) {
+console.log(process.env.NODE_ENV);
+if (config.use_env_variable && process.env.NODE_ENV === 'production') {
   const databaseUrl = new URL(process.env[config.use_env_variable]);
   sequelize = new Sequelize(databaseUrl.pathname.substr(1), databaseUrl.username, databaseUrl.password, {
     host: databaseUrl.hostname,
@@ -30,14 +31,6 @@ if (config.use_env_variable) {
   });
 } else {
   sequelize = new Sequelize(config.database, config.username, config.password, config);
-}
-async function testConnection() {
-  try {
-    await sequelize.authenticate();
-    console.log('Database connection has been established successfully.');
-  } catch (error) {
-    console.error('Unable to connect to the database:', error);
-  }
 }
 
 fs
@@ -60,8 +53,6 @@ Object.keys(db).forEach(modelName => {
     db[modelName].associate(db);
   }
 });
-
-testConnection();
 
 db.sequelize = sequelize;
 db.Sequelize = Sequelize;
