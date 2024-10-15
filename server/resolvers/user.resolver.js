@@ -9,15 +9,15 @@ const userResolver = {
         me: async (_, __, { user }) => {
             console.log('me resolver called, user:', user);
             if (!user) {
-                const token = req.headers.authorization || '';
-                const decoded = jwt.verify(token.replace('Bearer ', ''), process.env.JWT_SECRET);
-                const userData = await User.findByPk(decoded.userId);
-                if(!userData) {
+                // const token = req.headers.authorization || '';
+                // const decoded = jwt.verify(token.replace('Bearer ', ''), process.env.JWT_SECRET);
+                // const userData = await User.findByPk(decoded.userId);
+                // if(!userData) {
                     console.log('No user in context, throwing error');
                     throw new Error('Not authenticated');
-                }
-                console.log('Returning user in if:', userData);
-                return userData;
+                // }
+                // console.log('Returning user in if:', userData);
+                // return userData;
             }
             console.log('Returning user:', user);
             return user;
