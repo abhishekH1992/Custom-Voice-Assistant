@@ -3,7 +3,7 @@ import Header from '../components/nav/Header';
 import { GET_USER_SAVED_CHAT_LIST } from "../graphql/queries/chat.query";
 import { ME_QUERY } from "../graphql/queries/me.query";
 import { useTheme } from "../context/ThemeContext";
-import CardSkeleton from '../components/ui/CardSkeleton';
+import CardSkeleton from '../components/ui/skeleton/CardSkeleton';
 import TemplateCard from "../components/ui/TemplateCard";
 import { Link } from "react-router-dom";
 

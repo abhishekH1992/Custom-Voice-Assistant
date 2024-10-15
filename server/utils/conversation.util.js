@@ -76,7 +76,6 @@ const combinedStream = async function*(textStream, templateId, abortSignal) {
         
         const text = textBuffer.join('');
         const audioGenerator = textToSpeech(text, templateId.voice);
-
         for await (const audioChunk of audioGenerator) {
             if (abortSignal.aborted) throw new AbortError('Stream aborted');
             
