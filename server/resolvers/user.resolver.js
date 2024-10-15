@@ -16,6 +16,8 @@ const userResolver = {
                     console.log('No user in context, throwing error');
                     throw new Error('Not authenticated');
                 }
+                console.log('Returning user in if:', userData);
+                return userData;
             }
             console.log('Returning user:', user);
             return user;
