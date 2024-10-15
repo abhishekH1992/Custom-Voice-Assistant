@@ -1,5 +1,6 @@
 const { ApolloServer } = require('@apollo/server');
 const { expressMiddleware } = require('@apollo/server/express4');
+const { ApolloServerPluginDrainHttpServer } = require('@apollo/server/plugin/drainHttpServer');
 const { makeExecutableSchema } = require('@graphql-tools/schema');
 const express = require('express');
 const http = require('http');
@@ -11,8 +12,12 @@ const { User } = require('./models');
 const mergedTypeDef = require('./typeDefs/index.js');
 const mergedResolver = require('./resolvers/index.js');
 const redis = require('./redis');
+const { WebSocketServer } = require('ws');
+const { useServer } = require('graphql-ws/lib/use/ws');
+const { PubSub } = require('graphql-subscriptions');
 
 const app = express();
+const pubsub = new PubSub();
 
 const schema = makeExecutableSchema({
     typeDefs: mergedTypeDef,
@@ -20,14 +25,10 @@ const schema = makeExecutableSchema({
 });
 
 const authenticate = async (token) => {
-    console.log('Token:', token);
-    console.log('JWT_SECRET:', process.env.JWT_SECRET);
     if (!token) return null;
     try {
         const decoded = jwt.verify(token.replace('Bearer ', ''), process.env.JWT_SECRET);
-        console.log('Decoded:', decoded);
         const user = await User.findByPk(decoded.userId);
-        console.log('User:', user);
         return user;
     } catch (err) {
         console.error('Authentication error:', err);
@@ -36,34 +37,46 @@ const authenticate = async (token) => {
 };
 
 async function startServer() {
+    const httpServer = http.createServer(app);
+
+    const wsServer = new WebSocketServer({
+        server: httpServer,
+        path: '/graphql',
+    });
+
+    const serverCleanup = useServer({ 
+        schema,
+        context: async (ctx) => {
+            if (ctx.connectionParams && ctx.connectionParams.authorization) {
+                const user = await authenticate(ctx.connectionParams.authorization);
+                return { user, redis, pubsub };
+            }
+            return { redis, pubsub };
+        },
+    }, wsServer);
+
     const server = new ApolloServer({
         schema,
-        context: async ({ req }) => {
-            console.log('Context function called');
-            const token = req.headers.authorization || '';
-            const user = await authenticate(token);
-            console.log('Context user:', user);
-            return { user, redis };
-        },
+        plugins: [
+            ApolloServerPluginDrainHttpServer({ httpServer }),
+            {
+                async serverWillStart() {
+                    return {
+                        async drainServer() {
+                            await serverCleanup.dispose();
+                        },
+                    };
+                },
+            },
+        ],
     });
 
     await server.start();
 
-    // Configure CORS
     const corsOptions = {
         origin: process.env.REACT_APP_URL || 'http://localhost:3000',
         credentials: true
     };
-
-    // Logging middleware
-    app.use((req, res, next) => {
-        console.log('Incoming request:', {
-            method: req.method,
-            path: req.path,
-            headers: req.headers,
-        });
-        next();
-    });
 
     app.use(cors(corsOptions));
     app.use(json());
@@ -72,21 +85,18 @@ async function startServer() {
         '/graphql',
         expressMiddleware(server, {
             context: async ({ req }) => {
-                console.log('Express middleware context called');
                 const token = req.headers.authorization || '';
                 const user = await authenticate(token);
-                console.log('Express middleware user:', user);
-                return { user, redis };
+                return { user, redis, pubsub };
             },
         })
     );
 
     const PORT = process.env.PORT || 5000;
 
-    const httpServer = http.createServer(app);
-
     httpServer.listen(PORT, () => {
         console.log(`🚀 Server ready at http://localhost:${PORT}/graphql`);
+        console.log(`🚀 WebSocket server ready at ws://localhost:${PORT}/graphql`);
     });
 }
 
