@@ -1,4 +1,4 @@
-const Redis = require('redis');
+const { Redis } = require('@upstash/redis');
 
 const DOMAIN = 'akoplus.vercel.app';
 const NAMESPACE = `${DOMAIN}:`;
@@ -6,44 +6,36 @@ const isProduction = process.env.NODE_ENV === 'production';
 
 let redisClient = null;
 
-const createRedisClient = async () => {
-    if (!process.env.REDIS_URL && isProduction) {
-        console.error('REDIS_URL is not set in production environment');
+const createRedisClient = () => {
+    if (!process.env.UPSTASH_REDIS_URL || !process.env.UPSTASH_REDIS_TOKEN) {
+        console.error('UPSTASH_REDIS_URL or UPSTASH_REDIS_TOKEN is not set');
         return null;
     }
-
-    const client = Redis.createClient({
-        url: isProduction 
-            ? process.env.REDIS_URL 
-            : 'redis://localhost:6379',
-        socket: {
-            connectTimeout: 10000, // 10 seconds
-            reconnectStrategy: (attempts) => Math.min(attempts * 100, 3000), // Max 3 seconds between retries
-        }
-    });
-
-    client.on('error', (err) => console.error('Redis Client Error', err));
-    client.on('connect', () => console.log('Redis Client Connected'));
-    client.on('reconnecting', () => console.log('Redis Client Reconnecting'));
-
-    try {
-        await client.connect();
-        return client;
-    } catch (error) {
-        console.error('Failed to connect to Redis:', error);
-        return null;
+    if(isProduction) {
+        return new Redis({
+            url: process.env.UPSTASH_REDIS_URL,
+            token: process.env.UPSTASH_REDIS_TOKEN,
+        });
+    } else {
+        const client = Redis.createClient({
+            url: 'redis://localhost:6379',
+            socket: {
+                connectTimeout: 10000, // 10 seconds
+                reconnectStrategy: (attempts) => Math.min(attempts * 100, 3000), // Max 3 seconds between retries
+            }
+        });
     }
 };
 
-const getRedisClient = async () => {
+const getRedisClient = () => {
     if (!redisClient) {
-        redisClient = await createRedisClient();
+        redisClient = createRedisClient();
     }
     return redisClient;
 };
 
 const getRedisCached = async (cacheKey) => {
-    const client = await getRedisClient();
+    const client = getRedisClient();
     if (!client) return null;
 
     try {
@@ -57,13 +49,13 @@ const getRedisCached = async (cacheKey) => {
 };
 
 const addRedisCached = async (cacheKey, data, lifetime = process.env.CACHE_LIFE_LONG) => {
-    const client = await getRedisClient();
+    const client = getRedisClient();
     if (!client) return false;
 
     try {
         const namespacedKey = NAMESPACE + cacheKey;
         await client.set(namespacedKey, JSON.stringify(data), {
-            EX: parseInt(lifetime, 10) || 3600 // Default to 1 hour if parsing fails
+            ex: parseInt(lifetime, 10) || 3600 // Default to 1 hour if parsing fails
         });
         return true;
     } catch (error) {
@@ -73,7 +65,7 @@ const addRedisCached = async (cacheKey, data, lifetime = process.env.CACHE_LIFE_
 };
 
 const clearCache = async (pattern) => {
-    const client = await getRedisClient();
+    const client = getRedisClient();
     if (!client) return false;
 
     try {
@@ -90,7 +82,7 @@ const clearCache = async (pattern) => {
 };
 
 const clearAllCache = async () => {
-    const client = await getRedisClient();
+    const client = getRedisClient();
     if (!client) return false;
 
     try {
