@@ -20,10 +20,13 @@ const schema = makeExecutableSchema({
 });
 
 const authenticate = async (token) => {
+    console.log(token, process.env.JWT_SECRET);
     if (!token) return null;
     try {
         const decoded = jwt.verify(token.replace('Bearer ', ''), process.env.JWT_SECRET);
+        console.log('decoded:', decoded);
         const user = await User.findByPk(decoded.userId);
+        console.log('user:', user);
         return user;
     } catch (err) {
         console.error('Authentication error:', err);
@@ -52,6 +55,7 @@ async function startServer() {
         context: async ({ req }) => {
             const token = req.headers.authorization || '';
             const user = await authenticate(token);
+            console.log('startServer user', user)
             return { user, redis };
         },
     });
