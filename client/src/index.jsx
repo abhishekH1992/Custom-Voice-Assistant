@@ -14,7 +14,6 @@ import { createClient } from 'graphql-ws';
 const root = ReactDOM.createRoot(
     document.getElementById('root')
 );
-
 // Set up the backend URLs
 const httpUri = process.env.NODE_ENV === 'production' ? `${process.env.REACT_APP_GRAPHQL_HTTP_URI}` : 'http://localhost:5000/graphql';
 const wsUri = process.env.NODE_ENV === 'production' ? `${process.env.REACT_APP_GRAPHQL_WS_URI}` : 'ws://localhost:5000/graphql';
