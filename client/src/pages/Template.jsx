@@ -150,7 +150,7 @@ const Template = () => {
                     // Voices are not loaded yet, add an event listener
                     window.speechSynthesis.onvoiceschanged = () => {
                         const loadedVoices = window.speechSynthesis.getVoices();
-                        const selectedVoice = loadedVoices.find(voice => voice.name.includes('Google') || voice.lang.startsWith('en'));
+                        const selectedVoice = loadedVoices.find(voice => voice.name.includes('Google') || voice.lang.startsWith('en') || voice.lang.startsWith('male'));
                         
                         if (selectedVoice) {
                             utterance.voice = selectedVoice;
@@ -160,6 +160,11 @@ const Template = () => {
                             const synth = window.speechSynthesis;
                             synth.cancel();  // Cancel ongoing speech if activity is detected
                         }
+                        utterance.pitch = 0.9;
+                        utterance.rate = 1.1;
+                        utterance.lang = 'en-GB';
+                        console.log(utterance);
+                        // utterance.volume = 1;
                         window.speechSynthesis.speak(utterance);
                     };
                 } else {
