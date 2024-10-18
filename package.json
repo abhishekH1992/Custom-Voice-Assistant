@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node server/index.js",
     "dev": "nodemon server/index-dev.js",
-    "build": "npm install && npx sequelize-cli db:migrate && npx sequelize-cli db:seed:all"
+    "build": "npm run build-client",
+    "build-client": "cd client && npm install && npm run build"
   },
   "keywords": [],
   "author": "",
@@ -42,5 +43,9 @@
   },
   "devDependencies": {
     "nodemon": "^3.1.4"
+  },
+  "engines": {
+    "node": "21",
+    "npm": "10"
   }
 }
