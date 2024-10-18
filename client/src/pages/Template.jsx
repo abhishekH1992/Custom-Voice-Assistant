@@ -64,7 +64,7 @@ const Template = () => {
 
     useEffect(() => {
         if (enableTypes && enableTypes.types && enableTypes.types.length > 0) {
-            const firstType = enableTypes.types[2];
+            const firstType = enableTypes.types[0];
             setSelectedType(firstType);
             setCurrentType(firstType.name);
             console.log(firstType.name);
@@ -191,6 +191,7 @@ const Template = () => {
         onSubscriptionData: ({ subscriptionData }) => {
             const { content } = subscriptionData?.data?.audioStreamed;
             if(content && isActivityDetected.current === false) {
+                console.log(content);
                 audioQueue.current.push(content);
                 if (!isPlayingAudio.current) {
                     playNextAudio();
