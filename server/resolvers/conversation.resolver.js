@@ -54,6 +54,9 @@ const conversationResolver = {
                 activeStreams.delete(templateId);
             }
 
+            const abortController = new AbortController();
+            activeStreams.set(templateId, abortController);
+
             const audioBuffer = Buffer.concat(audioChunks);
             const fileName = `audio_${Date.now()}.wav`;
             const filePath = path.join(__dirname, '..', 'temp', fileName);
@@ -83,48 +86,36 @@ const conversationResolver = {
                     template = await Template.findByPk(templateId);
                     await addRedisCached(cacheKey, template);
                 }
-                const stream = await textCompletion(
-                    template.model,
-                    [
-                        { 'role': 'system', content: template.prompt },
-                        ...messages,
-                        { 'role': transcriptionSuccess ? 'user' : 'system', content: transcriptionSuccess ? fullTranscription : 'Ask to repeat it. System couldnt heard what user said.' }
-                    ],
-                    true
-                );
-                const abortController = new AbortController();
-                activeStreams.set(templateId, abortController);
-
-                const combinedStreamInstance = combinedStream(stream, templateId, abortController.signal);
+                
                 try {
-                    for await (const part of combinedStreamInstance) {
-                        if (part.messageStreamed) {
-                            pubsub.publish('MESSAGE_STREAMED', {
-                                messageStreamed: part.messageStreamed,
-                                templateId 
-                            });
-                        } 
-                        else if (part.audioStreamed) {
-                            pubsub.publish('AUDIO_STREAMED', {
-                                audioStreamed: part.audioStreamed,
-                                templateId
-                            });
-                        }
-                    }
+                    const stream = await textCompletion(
+                        template.model,
+                        [
+                            { 'role': 'system', content: template.prompt },
+                            ...messages,
+                            { 'role': transcriptionSuccess ? 'user' : 'system', content: transcriptionSuccess ? fullTranscription : 'Ask to repeat it. System couldnt heard what user said.' }
+                        ],
+                        false
+                    );
+                    // console.log(stream.choices[0].message.content);
+                    pubsub.publish('MESSAGE_STREAMED', { 
+                        messageStreamed: { role: 'system', content: stream.choices[0].message.content },
+                        templateId
+                    });
                 } catch (error) {
                     if (error.name === 'AbortError') {
                         console.log(`Stream for template ${templateId} was aborted`);
                     } else {
                         throw error;
                     }
-                } finally {
-                    activeStreams.delete(templateId);
                 }
         
                 return true;
             } catch (error) {
                 console.error('Error transcribing audio or generating response:', error);
                 return false;
+            } finally {
+                activeStreams.delete(templateId);
             }
         },
         sendAudioData: (_, { data }) => {

@@ -139,6 +139,45 @@ const Template = () => {
         variables: { templateId: data?.templateBySlug?.id },
         onSubscriptionData: ({ subscriptionData }) => {
             const { role, content: newContent } = subscriptionData?.data?.messageStreamed;
+            // Speech synthesis
+            const speak = (text) => {
+                const utterance = new SpeechSynthesisUtterance(text);
+            
+                // Ensure voices are loaded before proceeding
+                const voices = window.speechSynthesis.getVoices();
+            
+                if (voices.length === 0) {
+                    // Voices are not loaded yet, add an event listener
+                    window.speechSynthesis.onvoiceschanged = () => {
+                        const loadedVoices = window.speechSynthesis.getVoices();
+                        const selectedVoice = loadedVoices.find(voice => voice.name.includes('Google') || voice.lang.startsWith('en'));
+                        
+                        if (selectedVoice) {
+                            utterance.voice = selectedVoice;
+                        }
+                        console.log('Voice selected:', utterance.voice);
+                        if (isActivityDetected.current) {
+                            const synth = window.speechSynthesis;
+                            synth.cancel();  // Cancel ongoing speech if activity is detected
+                        }
+                        window.speechSynthesis.speak(utterance);
+                    };
+                } else {
+                    // Voices are already loaded
+                    const selectedVoice = voices.find(voice => voice.name.includes('Google') || voice.lang.startsWith('en'));
+                    
+                    if (selectedVoice) {
+                        utterance.voice = selectedVoice;
+                    }
+                    console.log('Voice selected:', utterance.voice);
+                    if (isActivityDetected.current) {
+                        const synth = window.speechSynthesis;
+                        synth.cancel();  // Cancel ongoing speech if activity is detected
+                    }
+                    window.speechSynthesis.speak(utterance);
+                }
+            };
+    
             if (newContent !== undefined && isActivityDetected.current === false) {
                 if (streamedMessageRef.current === '') {
                     setIsTyping(false);
@@ -152,14 +191,34 @@ const Template = () => {
                     timeStamp: messageStartTimeRef.current
                 });
                 isStreamingRef.current = true;
+    
+                // Trigger speech synthesis when new content is streamed
+                speak(newContent);
+    
             } else if (isStreamingRef.current && isActivityDetected.current === false) {
-                if(!isEmpty(streamedMessageRef)) setMessages(prev => [...prev, { role: 'system', content: streamedMessageRef.current, type: currentType, timeStamp: messageStartTimeRef.current }]);
+                if (!isEmpty(streamedMessageRef)) {
+                    setMessages(prev => [
+                        ...prev,
+                        {
+                            role: 'system',
+                            content: streamedMessageRef.current,
+                            type: currentType,
+                            timeStamp: messageStartTimeRef.current
+                        }
+                    ]);
+                    
+                    // Read the final streamed message
+                    speak(streamedMessageRef.current);
+                }
+    
                 setCurrentStreamedMessage('');
                 streamedMessageRef.current = '';
                 isStreamingRef.current = false;
             }
         }
     });
+    
+        
 
     useEffect(() => {
         if (!isStreamingRef.current && !isEmpty(currentStreamedMessage)) {
@@ -383,6 +442,7 @@ const Template = () => {
         setIsUserInitiatedStop(isUserInitiated);
         if ((mediaRecorderRef.current && !selectedType.isAutomatic && !selectedType.isContinous) || (mediaRecorderRef.current && !isUserInitiated && (selectedType?.isAutomatic || selectedType?.isContinous))) {
             mediaRecorderRef.current.stop();
+            console.log(getCurrentTime());
             await stopRecording(
                 { 
                     variables: {
