@@ -48,37 +48,14 @@ const conversationResolver = {
             console.log('Started recording');
             return true;
         },
-        stopRecording: async (_, { templateId, messages }) => {
+        stopRecording: async (_, { templateId, messages, transcribe }) => {
             if (activeStreams.has(templateId)) {
                 activeStreams.get(templateId).abort();
                 activeStreams.delete(templateId);
             }
 
-            const abortController = new AbortController();
-            activeStreams.set(templateId, abortController);
-
-            const audioBuffer = Buffer.concat(audioChunks);
-            const fileName = `audio_${Date.now()}.wav`;
-            const filePath = path.join(__dirname, '..', 'temp', fileName);
-            fs.writeFileSync(filePath, audioBuffer);
             const cacheKey = `template:${templateId}`;
-            let transcriptionSuccess = true;
             try {
-                let fullTranscription = 'Hi, I am Abhishek';
-                // try {
-                //     const transcriptionStream = await transcribeAudio(filePath);
-                //     for await (const part of transcriptionStream) {
-                //         const transcriptionPart = part || '';
-                //         fullTranscription += transcriptionPart;
-                //     }
-                //     pubsub.publish('USER_STREAMED', { 
-                //         userStreamed: { content: fullTranscription },
-                //         templateId
-                //     });
-                //     transcriptionSuccess = true;
-                // } catch(error) {
-                //     transcriptionSuccess = false;
-                // }
                 fs.unlinkSync(filePath);
 
                 let template = await getRedisCached(cacheKey);
@@ -86,6 +63,9 @@ const conversationResolver = {
                     template = await Template.findByPk(templateId);
                     await addRedisCached(cacheKey, template);
                 }
+
+                const abortController = new AbortController();
+                activeStreams.set(templateId, abortController);
                 
                 try {
                     const stream = await textCompletion(
@@ -93,14 +73,16 @@ const conversationResolver = {
                         [
                             { 'role': 'system', content: template.prompt },
                             ...messages,
-                            { 'role': transcriptionSuccess ? 'user' : 'system', content: transcriptionSuccess ? fullTranscription : 'Ask to repeat it. System couldnt heard what user said.' }
+                            { 'role': 'user', content: transcribe }
                         ],
                         false
                     );
-                    pubsub.publish('MESSAGE_STREAMED', { 
-                        messageStreamed: { role: 'system', content: stream.choices[0].message.content },
-                        templateId
-                    });
+                    if(abortController.signal.aborted) {
+                        pubsub.publish('MESSAGE_STREAMED', { 
+                            messageStreamed: { role: 'system', content: stream.choices[0].message.content },
+                            templateId
+                        });
+                    }
                     // for await (const part of stream) {
                     //     pubsub.publish('MESSAGE_STREAMED', { 
                     //         messageStreamed: { role: 'system', content: part.choices[0]?.delta?.content || '' },

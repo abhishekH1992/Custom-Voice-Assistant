@@ -6,8 +6,8 @@ import { GET_TEMPLATE_BY_SLUG } from '../graphql/queries/templates.query';
 import { GET_ENABLE_TYPES } from '../graphql/queries/types.query';
 import ChatMessage from '../components/ui/ChatMessage';
 import ChatBottom from '../components/ui/ChatBottom';
-import { MESSAGE_SUBSCRIPTION, AUDIO_SUBSCRIPTION, USER_SUBSCRIPTION, STREAM_STOPPED_SUBSCRIPTION } from '../graphql/subscriptions/conversation.subscription';
-import { SEND_MESSAGE, START_RECORDING, STOP_RECORDING, SEND_AUDIO_DATA, STOP_STREAMING } from '../graphql/mutations/conversation.mutation';
+import { MESSAGE_SUBSCRIPTION, STREAM_STOPPED_SUBSCRIPTION } from '../graphql/subscriptions/conversation.subscription';
+import { SEND_MESSAGE, STOP_RECORDING, STOP_STREAMING } from '../graphql/mutations/conversation.mutation';
 import TypeSettingsModal from '../components/ui/TypeSettingsModal';
 import { SAVE_CHAT, DELETE_CHAT } from '../graphql/mutations/chat.mutation';
 import SaveChatModal from '../components/ui/SaveChatModal';
@@ -25,7 +25,6 @@ const Template = () => {
     const streamedMessageRef = useRef('');
     const chatContainerRef = useRef(null);
     const [isRecording, setIsRecording] = useState(false);
-    const mediaRecorderRef = useRef(null);
     const audioRef = useRef(new Audio());
     const audioQueue = useRef([]);
     const isPlayingAudio = useRef(false);
@@ -40,9 +39,7 @@ const Template = () => {
     const [isSaveChatModalOpen, setIsSaveChatModalOpen] = useState(false);
     const [chatName, setChatName] = useState();
     const navigate = useNavigate();
-    const vadRef = useRef(null);
     const [isContinuousMode, setIsContinuousMode] = useState(false);
-    const shouldSendAudioRef = useRef(true);
     const messagesRef = useRef([]);
     const isActivityDetected = useRef(false);
     const [currentType, setCurrentType] = useState();
@@ -116,9 +113,7 @@ const Template = () => {
     }
 
     const [sendMessage] = useMutation(SEND_MESSAGE);
-    const [startRecording] = useMutation(START_RECORDING);
     const [stopRecording] = useMutation(STOP_RECORDING);
-    const [sendAudioData] = useMutation(SEND_AUDIO_DATA);
     const [stopStreaming] = useMutation(STOP_STREAMING);
 
     const [saveChat] = useMutation(SAVE_CHAT);
@@ -221,9 +216,7 @@ const Template = () => {
                 isStreamingRef.current = false;
             }
         }
-    });
-    
-        
+    }); 
 
     useEffect(() => {
         if (!isStreamingRef.current && !isEmpty(currentStreamedMessage)) {
@@ -233,98 +226,20 @@ const Template = () => {
         }
     }, [currentStreamedMessage, messages]);
 
-    const { error: userErr } = useSubscription(USER_SUBSCRIPTION, {
-        variables: { templateId: data?.templateBySlug?.id },
-        onSubscriptionData: ({ subscriptionData }) => {
-            const { content } = subscriptionData?.data?.userStreamed || {};
-            if (content) {
-                setUserStreamedContent(prevContent => prevContent + content);
-            }
-        }
-    });
-
-    useEffect(() => {
-        if (!isEmpty(userStreamedContent)) {
-            setMessages(prevMessages => [...prevMessages, { role: 'user', content: userStreamedContent, type: currentType, timeStamp: userStartTimeRef.current || getCurrentTime() }]);
-            setUserStreamedContent('');
-        }
-    }, [currentType, userStreamedContent]);
-
-    const { error: audioErr} = useSubscription(AUDIO_SUBSCRIPTION, {
-        variables: { templateId: data?.templateBySlug?.id },
-        onSubscriptionData: ({ subscriptionData }) => {
-            const { content } = subscriptionData?.data?.audioStreamed;
-            if(content && isActivityDetected.current === false) {
-                console.log(content);
-                audioQueue.current.push(content);
-                if (!isPlayingAudio.current) {
-                    playNextAudio();
-                }
-            }
-        }
-    });
-
     const { error: stopStreamErr} = useSubscription(STREAM_STOPPED_SUBSCRIPTION, {
         variables: { templateId: data?.templateBySlug?.id },
         onSubscriptionData: ({ subscriptionData }) => {
             const { templateId } = subscriptionData?.data?.streamStopped;
             if (templateId === data?.templateBySlug?.id) {
-                handleStreamStopped();
+                // handleStreamStopped();
             }
         }
     });
 
     useEffect(() => {
         if(msgErr) console.log('MESSAGE_STREAM: '+msgErr);
-        if(userErr) console.log('USER_STREAM: '+msgErr);
-        if(audioErr) console.log('AUDIO_STREAM: '+msgErr);
         if(stopStreamErr) console.log('STREAM_STOPPED: '+stopStreamErr);
     })
-
-    const playNextAudio = useCallback(() => {
-        if ((audioQueue.current.length > 0 && !selectedType?.isAutomatic && !selectedType?.isContinous) || (audioQueue.current.length > 0 && !isUserInitiatedStop && (selectedType?.isAutomatic || selectedType?.isContinous) && isActivityDetected.current === false)) {
-            isPlayingAudio.current = true;
-            const audioContent = audioQueue.current.shift();
-            const audioChunk = base64ToArrayBuffer(audioContent);
-            const audioFormats = ['audio/mpeg', 'audio/mp4', 'audio/webm', 'audio/ogg'];
-            const attemptPlay = (formatIndex) => {
-                if (formatIndex >= audioFormats.length) {
-                    console.error("Failed to play audio with all known formats");
-                    playNextAudio();
-                    return;
-                }
-
-                const blob = new Blob([audioChunk], { type: audioFormats[formatIndex] });
-                const url = URL.createObjectURL(blob);
-                
-                audioRef.current.src = url;
-                audioRef.current.play()
-                    .then(() => {
-                        console.log("Audio playing successfully with format:", audioFormats[formatIndex]);
-                        audioRef.current.onended = playNextAudio;
-                    })
-                    .catch(e => {
-                        console.warn(`Error playing audio with format ${audioFormats[formatIndex]}:`, e);
-                        URL.revokeObjectURL(url);
-                        attemptPlay(formatIndex + 1);
-                    });
-            };
-            attemptPlay(0);
-        } else {
-            setIsSystemAudioComplete(true);
-            isPlayingAudio.current = false;
-        }
-    }, [isUserInitiatedStop, selectedType]);
-
-    const base64ToArrayBuffer = (base64) => {
-        const binaryString = window.atob(base64);
-        const len = binaryString.length;
-        const bytes = new Uint8Array(len);
-        for (let i = 0; i < len; i++) {
-            bytes[i] = binaryString.charCodeAt(i);
-        }
-        return bytes.buffer;
-    };
 
     const sendMessageToServer = useCallback(async (messages) => {
         try {
@@ -355,162 +270,12 @@ const Template = () => {
 
     }, [currentStreamedMessage, currentType, sendMessageToServer]);
 
-    const handleStartRecording = useCallback(async () => {
-        try {
-            if (!isEmpty(currentStreamedMessage) || streamedMessageRef.current !== '') {
-                setMessages(prevMessages => {
-                    const newMessages = [...prevMessages, { role: currentStreamedMessage.role || 'system', content: currentStreamedMessage.content || streamedMessageRef.current, type: currentStreamedMessage.type || currentType, timeStamp: currentStreamedMessage.timeStamp || getCurrentTime() }];
-                    messagesRef.current = newMessages;
-                    return newMessages;
-                });
-            }
-            await startRecording();
-            userStartTimeRef.current = getCurrentTime();
-            setIsRecording(true);
-            setCurrentStreamedMessage({});
-            streamedMessageRef.current = '';
-            isStreamingRef.current = false;
-            shouldSendAudioRef.current = true;
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            mediaRecorderRef.current = new MediaRecorder(stream, {
-                mimeType: 'audio/webm',
-            });
-
-            mediaRecorderRef.current.ondataavailable = async (event) => {
-                if (event.data.size > 0 && shouldSendAudioRef.current) {
-                    const reader = new FileReader();
-                    reader.onload = async () => {
-                        const base64AudioData = reader.result.split(',')[1];
-                        await sendAudioData({ variables: { data: base64AudioData } });
-                    };
-                    reader.readAsDataURL(event.data);
-                }
-            };
-
-            mediaRecorderRef.current.start(250);
-        } catch (error) {
-            console.error('Error starting recording:', error);
-        }
-    }, [currentStreamedMessage, startRecording, currentType, sendAudioData]);
-
-    const stopVoiceActivityDetection = useCallback(() => {
-        if (vadRef.current) {
-            vadRef.current.disconnect();
-            vadRef.current = null;
-        }
-    }, []);
-
     useEffect(() => {
         if (messages.length > 0) {
             console.log(messages);
             messagesRef.current = messages;
         }
     }, [messages]);
-
-    const handleStreamStopped = useCallback(() => {
-        setIsRecording(false);
-        setIsTyping(false);
-        setIsCallActive(false);
-        setIsContinuousMode(false);
-        setIsUserInitiatedStop(true);
-        setIsSystemAudioComplete(true);
-        
-        if (isStreamingRef.current) {
-            isStreamingRef.current = false;
-            setCurrentStreamedMessage({});
-            streamedMessageRef.current = '';
-        }
-
-        audioQueue.current = [];
-        if (audioRef.current) {
-            audioRef.current.pause();
-            audioRef.current.src = '';
-        }
-        isPlayingAudio.current = false;
-
-        if (mediaRecorderRef.current) {
-            mediaRecorderRef.current.stop();
-            mediaRecorderRef.current = null;
-        }
-
-        stopVoiceActivityDetection();
-    }, [stopVoiceActivityDetection]);
-
-    const handleStopRecording = useCallback(async(isUserInitiated = false) => {
-        setIsRecording(false);
-        shouldSendAudioRef.current = false;
-        if(selectedType?.isContinous && isUserInitiated) {
-            stopVoiceActivityDetection();
-            setIsContinuousMode(false);
-        }
-        console.log(messagesRef);
-        setIsUserInitiatedStop(isUserInitiated);
-        if ((mediaRecorderRef.current && !selectedType.isAutomatic && !selectedType.isContinous) || (mediaRecorderRef.current && !isUserInitiated && (selectedType?.isAutomatic || selectedType?.isContinous))) {
-            mediaRecorderRef.current.stop();
-            console.log(getCurrentTime());
-            await stopRecording(
-                { 
-                    variables: {
-                        templateId: data?.templateBySlug?.id,
-                        messages: messagesRef.current
-                    }
-                }
-            );
-            setIsTyping(true);
-        }
-        if (isUserInitiated && (selectedType?.isAutomatic || selectedType?.isContinous)) {
-            handleStreamStopped();
-            // isActivityDetected.current = false;
-            // setIsTyping(false);
-            // if (isStreamingRef.current) {
-            //     isStreamingRef.current = false;
-            //     setCurrentStreamedMessage({});
-            //     streamedMessageRef.current = '';
-            // }
-            // audioQueue.current = [];
-            // if (audioRef.current) {
-            //     audioRef.current.pause();
-            //     audioRef.current.src = '';
-            // }
-            // isPlayingAudio.current = false;
-            // setIsSystemAudioComplete(true);
-            // if (isCallActive) {
-            //     setIsCallActive(false);
-            // }
-            // if (mediaRecorderRef.current) {
-            //     mediaRecorderRef.current.stop();
-            //     mediaRecorderRef.current = null;
-            // }
-        }
-    }, [selectedType, stopVoiceActivityDetection, stopRecording, data?.templateBySlug?.id, handleStreamStopped]);
-
-    useEffect(() => {
-        let recordingTimer;
-        let countdownTimer;
-        if (isCallActive && selectedType && selectedType.isAutomatic && !isUserInitiatedStop) {
-            if (isRecording) {
-                setRemainingTime(recordingDuration);
-                countdownTimer = setInterval(() => {
-                    setRemainingTime(prevTime => {
-                        if (prevTime <= 1) {
-                            clearInterval(countdownTimer);
-                            return 0;
-                        }
-                        return prevTime - 1;
-                    });
-                }, 1000);
-                recordingTimer = setTimeout(() => {
-                    handleStopRecording(false);
-                }, recordingDuration * 1000);
-            } else if (isSystemAudioComplete) {
-                handleStartRecording();
-                setIsSystemAudioComplete(false);
-            }
-        }
-        return () => {
-            clearTimeout(recordingTimer);
-        };
-    }, [isCallActive, isRecording, isSystemAudioComplete, recordingDuration, handleStartRecording, handleStopRecording, selectedType, isUserInitiatedStop]);
 
     const isEmpty = (obj) => Object.keys(obj).length === 0;
 
@@ -584,93 +349,71 @@ const Template = () => {
         window.location.assign(`/analytics/${templateSlug}/${savedChatId}`);
     }
 
-    const stopAudioPlayback = useCallback(() => {
-        isActivityDetected.current = true;
-        audioQueue.current = [];
-        if (audioRef.current) {
-            audioRef.current.pause();
-            audioRef.current.src = '';
+    const speechRecongnition = useCallback(async (continuous=false) => {
+        if (!('webkitSpeechRecognition' in window)) {
+            console.error('Speech recognition not supported in this browser.');
+            return;
         }
-        isPlayingAudio.current = false;
-        setIsSystemAudioComplete(true);
-        setIsCallActive(true);
-        setIsUserInitiatedStop(false);
-    }, []);
 
-    const startVoiceActivityDetection = useCallback(() => {
-        if (vadRef.current) return;
-        setIsRecording(true);
-        navigator.mediaDevices.getUserMedia({ audio: true })
-            .then(stream => {
-                const audioContext = new AudioContext();
+        // Create a new SpeechRecognition instance
+        const recognition = new window.webkitSpeechRecognition() || new window.SpeechRecognition();
 
-                vadRef.current = vad(audioContext, stream, {
-                    onVoiceStart: () => {
-                        console.log('Start: '+isActivityDetected.current);
-                        stopAudioPlayback();
-                        if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
-                            mediaRecorderRef.current.stop();
-                        }
-                        handleStartRecording();
-                    },
-                    onVoiceStop: () => {
-                        setTimeout(() => {
-                            isActivityDetected.current = false;
-                        }, 100);
-                        console.log('Stopped: '+isActivityDetected.current);
-                        setIsCallActive(false);
-                        handleStopRecording(false);
-                    },
-                    // fftSize: 2048,
-                    // bufferLen: 2048,
-                    smoothingTimeConstant: 0.9,
-                    // minCaptureFreq: 150,
-                    // maxCaptureFreq: 3500,
-                    noiseCaptureDuration: 300,
-                    minNoiseLevel: 0.4,
-                    maxNoiseLevel: 0.8,
-                    // avgNoiseMultiplier: 1.4,
-                });
-            })
-            .catch(err => console.error('Error accessing microphone:', err));
-    }, [handleStartRecording, handleStopRecording, stopAudioPlayback]);
+        // Set recognition options
+        recognition.lang = 'en-US'; // Set language
+        recognition.interimResults = true; // Get interim results while speaking
+        recognition.continuous = continuous; // Set to true if you want continuous speech recognition
 
-    useEffect(() => {
-        return () => {
-            stopVoiceActivityDetection();
-        };
-    }, [stopVoiceActivityDetection]);
+        // Handle when speech is recognized and transcribed
+        recognition.onresult = (event) => {
+            let transcript = '';
+            
+            // Iterate through the results and get the transcript
+            for (let i = event.resultIndex; i < event.results.length; i++) {
+                const result = event.results[i];
+                transcript += result[0].transcript;
 
-    const handleStopStreaming = useCallback(async () => {
-        try {
-            await stopStreaming({
-                variables: {
-                    templateId: data?.templateBySlug?.id
+                // Update the state with the transcribed text (replace the current content)
+                setUserStreamedContent(transcript);
+
+                // You can handle the final transcription separately if needed
+                if (result.isFinal) {
+                    // setUserStreamedContent(transcript);
+                    console.log('Final transcription:', transcript);
+                } else {
+                    console.log('Interim transcription:', transcript);
                 }
-            });
-            handleStreamStopped();
-        } catch (error) {
-            console.error('Error stopping stream:', error);
-        }
-    }, [data?.templateBySlug?.id, stopStreaming, handleStreamStopped]);
+            }
+        };
+
+        // Handle when the recognition ends
+        recognition.onend = () => {
+            console.log('Speech recognition ended.');
+        };
+
+        // Handle errors
+        recognition.onerror = (event) => {
+            console.error('Speech recognition error:', event.error);
+        };
+
+        // Start the speech recognition
+        recognition.start();
+
+        console.log('Speech recognition started.');
+    }, [])
+    
 
     const handleStartCall = useCallback(async() => {
-        if(selectedType.isAutomatic) {
-            setIsCallActive(true);
-            setIsSystemAudioComplete(false);
-            setIsUserInitiatedStop(false);
-            handleStartRecording();
-        } else if(selectedType.isContinous) {
-            await handleStopStreaming();
-            setIsCallActive(true);
-            setIsSystemAudioComplete(false);
-            setIsUserInitiatedStop(false);
-            setIsContinuousMode(true);
-            startVoiceActivityDetection();
-        }else {
-            handleStartRecording();
+        speechRecongnition();
+    }, [speechRecongnition]);
+
+    const handleStopRecording = useCallback(async(stopStream=false) => {
+        if(stopStream) {
+            setIsUserInitiatedStop(true);
+            await stopStreaming({
+                
+            })
         }
-    }, [handleStartRecording, handleStopStreaming, selectedType, startVoiceActivityDetection]);
+    }, []);
 
     if (loading || typeLoading || savedChatLoading) return <div className="flex items-center justify-center h-screen">Loading...</div>;
 
