@@ -9,7 +9,6 @@ const db = {};
 const mysql2 = require('mysql2');
 
 let sequelize;
-console.log(process.env.NODE_ENV);
 if (config.use_env_variable && process.env.NODE_ENV === 'production') {
   const databaseUrl = new URL(process.env[config.use_env_variable]);
   sequelize = new Sequelize(databaseUrl.pathname.substr(1), databaseUrl.username, databaseUrl.password, {
@@ -19,7 +18,7 @@ if (config.use_env_variable && process.env.NODE_ENV === 'production') {
     dialectModule: mysql2,
     dialectOptions: {
       ssl: {
-        rejectUnauthorized: true,
+        rejectUnauthorized: false,
       }
     },
     pool: {
