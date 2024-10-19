@@ -1,5 +1,4 @@
 const Redis = require('ioredis');
-const { Redis: UpstashRedis } = require('@upstash/redis');
 
 const DOMAIN = 'akoplus.vercel.app';
 const NAMESPACE = `${DOMAIN}:`;
@@ -9,14 +8,12 @@ let redisClient = null;
 
 const createRedisClient = async () => {
     if (isProduction) {
-        if (!process.env.REDIS_URL || !process.env.REDIS_TOKEN) {
-            console.error('UPSTASH_REDIS_REST_URL or UPSTASH_REDIS_REST_TOKEN is not set');
-            return null;
-        }
-        return new UpstashRedis({
-            url: process.env.REDIS_URL,
-            token: process.env.REDIS_TOKEN,
-        });
+        const client = new Redis(process.env.HEROKU_REDIS_GRAY);
+        client.on('error', (err) => console.error('Redis Client Error', err));
+        client.on('connect', () => console.log('Redis Client Connected'));
+        client.on('reconnecting', () => console.log('Redis Client Reconnecting'));
+
+        return client;
     } else {
         const client = new Redis({
             host: 'localhost',
@@ -47,6 +44,7 @@ const getRedisCached = async (cacheKey) => {
     try {
         const namespacedKey = NAMESPACE + cacheKey;
         const cachedData = await client.get(namespacedKey);
+        console.log('cachedData', cachedData);
         return cachedData ? JSON.parse(cachedData) : null;
     } catch (error) {
         console.error('Error in getRedisCached:', error);
