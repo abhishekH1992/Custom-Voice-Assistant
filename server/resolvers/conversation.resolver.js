@@ -64,21 +64,21 @@ const conversationResolver = {
             const cacheKey = `template:${templateId}`;
             let transcriptionSuccess = true;
             try {
-                let fullTranscription = '';
-                try {
-                    const transcriptionStream = await transcribeAudio(filePath);
-                    for await (const part of transcriptionStream) {
-                        const transcriptionPart = part || '';
-                        fullTranscription += transcriptionPart;
-                    }
-                    pubsub.publish('USER_STREAMED', { 
-                        userStreamed: { content: fullTranscription },
-                        templateId
-                    });
-                    transcriptionSuccess = true;
-                } catch(error) {
-                    transcriptionSuccess = false;
-                }
+                let fullTranscription = 'Hi, I am Abhishek';
+                // try {
+                //     const transcriptionStream = await transcribeAudio(filePath);
+                //     for await (const part of transcriptionStream) {
+                //         const transcriptionPart = part || '';
+                //         fullTranscription += transcriptionPart;
+                //     }
+                //     pubsub.publish('USER_STREAMED', { 
+                //         userStreamed: { content: fullTranscription },
+                //         templateId
+                //     });
+                //     transcriptionSuccess = true;
+                // } catch(error) {
+                //     transcriptionSuccess = false;
+                // }
                 fs.unlinkSync(filePath);
 
                 let template = await getRedisCached(cacheKey);
@@ -97,11 +97,16 @@ const conversationResolver = {
                         ],
                         false
                     );
-                    // console.log(stream.choices[0].message.content);
                     pubsub.publish('MESSAGE_STREAMED', { 
                         messageStreamed: { role: 'system', content: stream.choices[0].message.content },
                         templateId
                     });
+                    // for await (const part of stream) {
+                    //     pubsub.publish('MESSAGE_STREAMED', { 
+                    //         messageStreamed: { role: 'system', content: part.choices[0]?.delta?.content || '' },
+                    //         templateId
+                    //     });
+                    // }
                 } catch (error) {
                     if (error.name === 'AbortError') {
                         console.log(`Stream for template ${templateId} was aborted`);

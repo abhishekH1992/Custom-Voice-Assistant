@@ -5,8 +5,9 @@ const stream = require('stream');
 const util = require('util');
 
 const textCompletion = async(model, messages, stream = false) => {
+    console.log(model);
     const response =  await openai.chat.completions.create({
-        model: model,
+        model: 'gpt-4o-mini',
         messages: messages,
         stream: stream,
     });

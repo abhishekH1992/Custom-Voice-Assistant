@@ -150,7 +150,7 @@ const Template = () => {
                     // Voices are not loaded yet, add an event listener
                     window.speechSynthesis.onvoiceschanged = () => {
                         const loadedVoices = window.speechSynthesis.getVoices();
-                        const selectedVoice = loadedVoices.find(voice => voice.name.includes('Google') || voice.lang.startsWith('en') || voice.lang.startsWith('male'));
+                        const selectedVoice = loadedVoices.find(voice => voice.name.includes('Google') || voice.lang.startsWith('en') || voice.lang.includes('male'));
                         
                         if (selectedVoice) {
                             utterance.voice = selectedVoice;
