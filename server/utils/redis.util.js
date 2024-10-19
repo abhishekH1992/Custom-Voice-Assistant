@@ -8,7 +8,7 @@ let redisClient = null;
 
 const createRedisClient = async () => {
     if (isProduction) {
-        const client = new Redis(process.env.HEROKU_REDIS_GRAY);
+        const client = new Redis(process.env.REDIS_URL);
         client.on('error', (err) => console.error('Redis Client Error', err));
         client.on('connect', () => console.log('Redis Client Connected'));
         client.on('reconnecting', () => console.log('Redis Client Reconnecting'));

@@ -1,12 +1,9 @@
-const { Redis } = require('@upstash/redis');
+const Redis = require('ioredis');
 
 let redis;
 
 if (process.env.NODE_ENV === 'production') {
-  redis = new Redis({
-    url: process.env.UPSTASH_REDIS_URL,
-    token: process.env.UPSTASH_REDIS_TOKEN,
-  });
+  redis = new Redis(process.env.REDIS_URL);
 } else {
   redis = new Redis();
 }
