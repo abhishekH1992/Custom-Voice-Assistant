@@ -1,8 +1,6 @@
 const { openai, audioStreamChunkSize } = require('./openai.util');
 const fs = require('fs');
 const { Buffer } = require('buffer');
-const stream = require('stream');
-const util = require('util');
 
 const textCompletion = async(model, messages, stream = false) => {
     const response =  await openai.chat.completions.create({
@@ -29,9 +27,8 @@ const transcribeAudio = async(filePath) => {
 }
 
 const combinedStream = async function*(textStream, templateId, abortSignal) {
-    const REGULAR_AUDIO_CHUNK_SIZE = parseInt(process.env.AUDIO_STREAM_CHUNK_SIZE, 10);
-    console.log(REGULAR_AUDIO_CHUNK_SIZE);
-    const INITIAL_AUDIO_CHUNK_SIZE = Math.floor(REGULAR_AUDIO_CHUNK_SIZE / 3);
+    const REGULAR_AUDIO_CHUNK_SIZE = parseInt(audioStreamChunkSize, 10);
+    const INITIAL_AUDIO_CHUNK_SIZE = Math.floor(REGULAR_AUDIO_CHUNK_SIZE / 2);
     const INITIAL_CHUNKS = 5;
 
     let textBuffer = [];
@@ -68,9 +65,7 @@ const combinedStream = async function*(textStream, templateId, abortSignal) {
             const currentChunkSize = chunkCount < INITIAL_CHUNKS ? INITIAL_AUDIO_CHUNK_SIZE : REGULAR_AUDIO_CHUNK_SIZE;
             while (audioBufferOffset >= currentChunkSize) {
                 const chunkToSend = audioBuffer.slice(0, currentChunkSize);
-
                 if (abortSignal.aborted) throw new AbortError('Stream aborted');
-
                 yield {
                     audioStreamed: { content: chunkToSend.toString('base64') },
                     templateId,

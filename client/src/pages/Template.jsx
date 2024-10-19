@@ -25,7 +25,6 @@ const Template = () => {
     const streamedMessageRef = useRef('');
     const chatContainerRef = useRef(null);
     const [isRecording, setIsRecording] = useState(false);
-    const mediaRecorderRef = useRef(null);
     const audioRef = useRef(new Audio());
     const audioQueue = useRef([]);
     const isPlayingAudio = useRef(false);
@@ -42,13 +41,11 @@ const Template = () => {
     const navigate = useNavigate();
     const vadRef = useRef(null);
     const [isContinuousMode, setIsContinuousMode] = useState(false);
-    const shouldSendAudioRef = useRef(true);
     const messagesRef = useRef([]);
     const isActivityDetected = useRef(false);
     const [currentType, setCurrentType] = useState();
     const messageStartTimeRef = useRef(null);
     const userStartTimeRef = useRef(null);
-
 
     const { data, loading } = useQuery(GET_TEMPLATE_BY_SLUG, {
         variables: {
@@ -305,28 +302,57 @@ const Template = () => {
             setCurrentStreamedMessage({});
             streamedMessageRef.current = '';
             isStreamingRef.current = false;
-            shouldSendAudioRef.current = true;
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            mediaRecorderRef.current = new MediaRecorder(stream, {
-                mimeType: 'audio/webm',
-            });
 
-            mediaRecorderRef.current.ondataavailable = async (event) => {
-                if (event.data.size > 0 && shouldSendAudioRef.current) {
-                    const reader = new FileReader();
-                    reader.onload = async () => {
-                        const base64AudioData = reader.result.split(',')[1];
-                        await sendAudioData({ variables: { data: base64AudioData } });
-                    };
-                    reader.readAsDataURL(event.data);
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            let recognition;
+
+            if (SpeechRecognition) {
+                recognition = new SpeechRecognition();
+                recognition.lang = 'en-US';
+                recognition.interimResults = true; // Capture interim results (not final yet)
+                recognition.maxAlternatives = 1;
+                recognition.start();
+            } else {
+                console.error('SpeechRecognition API is not supported in this browser.');
+            }
+
+            recognition.onresult = (event) => {
+                for (let i = 0; i < event.results.length; i++) {
+                    const transcript = event.results[i][0].transcript;
+                    if (event.results[i].isFinal) {
+                        setUserStreamedContent((prev) => prev + transcript + ' ');
+                        messagesRef.current = [
+                            ...messagesRef.current,
+                            {
+                                role: 'user',
+                                content: transcript,
+                                type: currentType,
+                                timeStamp: getCurrentTime(),
+                            }
+                        ];
+                    }
                 }
             };
 
-            mediaRecorderRef.current.start(250);
+            recognition.onerror = (event) => {
+                console.error('SpeechRecognition error:', event.error);
+            };
+
+            recognition.onend = () => {
+                console.log('Speech recognition service disconnected.');
+            };
         } catch (error) {
             console.error('Error starting recording:', error);
+
+            if (error.name === 'NotAllowedError') {
+                console.error('Microphone access was denied by the user.');
+            } else if (error.name === 'NotFoundError') {
+                console.error('No microphone was found on this device.');
+            } else {
+                console.error('An unknown error occurred:', error);
+            }
         }
-    }, [currentStreamedMessage, startRecording, currentType, sendAudioData]);
+    }, [currentStreamedMessage, startRecording, currentType]);
 
     const stopVoiceActivityDetection = useCallback(() => {
         if (vadRef.current) {
@@ -363,25 +389,17 @@ const Template = () => {
         }
         isPlayingAudio.current = false;
 
-        if (mediaRecorderRef.current) {
-            mediaRecorderRef.current.stop();
-            mediaRecorderRef.current = null;
-        }
-
         stopVoiceActivityDetection();
     }, [stopVoiceActivityDetection]);
 
     const handleStopRecording = useCallback(async(isUserInitiated = false) => {
         setIsRecording(false);
-        shouldSendAudioRef.current = false;
         if(selectedType?.isContinous && isUserInitiated) {
             stopVoiceActivityDetection();
             setIsContinuousMode(false);
         }
         setIsUserInitiatedStop(isUserInitiated);
-        if ((mediaRecorderRef.current && !selectedType.isAutomatic && !selectedType.isContinous) || (mediaRecorderRef.current && !isUserInitiated && (selectedType?.isAutomatic || selectedType?.isContinous))) {
-            mediaRecorderRef.current.stop();
-            userStartTimeRef.current = getCurrentTime();
+        if ((!selectedType.isAutomatic && !selectedType.isContinous) || (!isUserInitiated && (selectedType?.isAutomatic || selectedType?.isContinous))) {
             await stopRecording(
                 { 
                     variables: {
@@ -394,29 +412,8 @@ const Template = () => {
         }
         if (isUserInitiated && (selectedType?.isAutomatic || selectedType?.isContinous)) {
             handleStreamStopped();
-            // isActivityDetected.current = false;
-            // setIsTyping(false);
-            // if (isStreamingRef.current) {
-            //     isStreamingRef.current = false;
-            //     setCurrentStreamedMessage({});
-            //     streamedMessageRef.current = '';
-            // }
-            // audioQueue.current = [];
-            // if (audioRef.current) {
-            //     audioRef.current.pause();
-            //     audioRef.current.src = '';
-            // }
-            // isPlayingAudio.current = false;
-            // setIsSystemAudioComplete(true);
-            // if (isCallActive) {
-            //     setIsCallActive(false);
-            // }
-            // if (mediaRecorderRef.current) {
-            //     mediaRecorderRef.current.stop();
-            //     mediaRecorderRef.current = null;
-            // }
         }
-    }, [selectedType, stopVoiceActivityDetection, stopRecording, data?.templateBySlug?.id, handleStreamStopped]);
+    }, [selectedType?.isContinous, selectedType?.isAutomatic, stopVoiceActivityDetection, stopRecording, data?.templateBySlug?.id, handleStreamStopped]);
 
     useEffect(() => {
         let recordingTimer;
@@ -542,9 +539,6 @@ const Template = () => {
                     onVoiceStart: () => {
                         console.log('Start: '+isActivityDetected.current);
                         stopAudioPlayback();
-                        if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
-                            mediaRecorderRef.current.stop();
-                        }
                         handleStartRecording();
                     },
                     onVoiceStop: () => {

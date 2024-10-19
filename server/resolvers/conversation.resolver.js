@@ -53,47 +53,25 @@ const conversationResolver = {
                 activeStreams.get(templateId).abort();
                 activeStreams.delete(templateId);
             }
-
-            const audioBuffer = Buffer.concat(audioChunks);
-            const fileName = `audio_${Date.now()}.wav`;
-            const filePath = path.join(__dirname, '..', 'temp', fileName);
-            fs.writeFileSync(filePath, audioBuffer);
             const cacheKey = `template:${templateId}`;
-            let transcriptionSuccess = true;
             try {
-                let fullTranscription = '';
-                try {
-                    const transcriptionStream = await transcribeAudio(filePath);
-                    for await (const part of transcriptionStream) {
-                        const transcriptionPart = part || '';
-                        fullTranscription += transcriptionPart;
-                    }
-                    pubsub.publish('USER_STREAMED', { 
-                        userStreamed: { content: fullTranscription },
-                        templateId
-                    });
-                    transcriptionSuccess = true;
-                } catch(error) {
-                    transcriptionSuccess = false;
-                }
-                fs.unlinkSync(filePath);
-
                 let template = await getRedisCached(cacheKey);
                 if(!template) {
-                    template = await Template.findByPk(templateId);
+                    let template = await Template.findByPk(templateId);
                     await addRedisCached(cacheKey, template);
                 }
                 const stream = await textCompletion(
                     template.model,
                     [
                         { 'role': 'system', content: template.prompt },
-                        ...messages,
-                        { 'role': transcriptionSuccess ? 'user' : 'system', content: transcriptionSuccess ? fullTranscription : 'Ask to repeat it. System couldnt heard what user said.' }
+                        ...messages
                     ],
                     true
                 );
                 const abortController = new AbortController();
                 activeStreams.set(templateId, abortController);
+
+                console.log(stream);
 
                 const combinedStreamInstance = combinedStream(stream, templateId, abortController.signal);
                 try {
