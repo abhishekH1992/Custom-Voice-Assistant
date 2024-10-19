@@ -121,7 +121,7 @@ const Login = () => {
                         </Button>
                     </form>
                     <div className="mt-4 text-center">
-                        <Link href="/register" className="text-sm text-white">Don't have an account? Register here</Link>
+                        <Link href="/register" className="text-sm text-white">Don&apos;t have an account? Register here</Link>
                     </div>
                 </div>
             </div>

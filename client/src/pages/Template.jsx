@@ -6,8 +6,8 @@ import { GET_TEMPLATE_BY_SLUG } from '../graphql/queries/templates.query';
 import { GET_ENABLE_TYPES } from '../graphql/queries/types.query';
 import ChatMessage from '../components/ui/ChatMessage';
 import ChatBottom from '../components/ui/ChatBottom';
-import { MESSAGE_SUBSCRIPTION, AUDIO_SUBSCRIPTION, USER_SUBSCRIPTION, STREAM_STOPPED_SUBSCRIPTION } from '../graphql/subscriptions/conversation.subscription';
-import { SEND_MESSAGE, START_RECORDING, STOP_RECORDING, SEND_AUDIO_DATA, STOP_STREAMING } from '../graphql/mutations/conversation.mutation';
+import { MESSAGE_SUBSCRIPTION, AUDIO_SUBSCRIPTION, STREAM_STOPPED_SUBSCRIPTION } from '../graphql/subscriptions/conversation.subscription';
+import { SEND_MESSAGE, START_RECORDING, STOP_RECORDING, STOP_STREAMING } from '../graphql/mutations/conversation.mutation';
 import TypeSettingsModal from '../components/ui/TypeSettingsModal';
 import { SAVE_CHAT, DELETE_CHAT } from '../graphql/mutations/chat.mutation';
 import SaveChatModal from '../components/ui/SaveChatModal';
@@ -115,7 +115,6 @@ const Template = () => {
     const [sendMessage] = useMutation(SEND_MESSAGE);
     const [startRecording] = useMutation(START_RECORDING);
     const [stopRecording] = useMutation(STOP_RECORDING);
-    const [sendAudioData] = useMutation(SEND_AUDIO_DATA);
     const [stopStreaming] = useMutation(STOP_STREAMING);
 
     const [saveChat] = useMutation(SAVE_CHAT);
@@ -135,7 +134,8 @@ const Template = () => {
         skip: !data?.templateBySlug?.id,
         variables: { templateId: data?.templateBySlug?.id },
         onSubscriptionData: ({ subscriptionData }) => {
-            const { role, content: newContent } = subscriptionData?.data?.messageStreamed;
+            const { role, content: newContent } = subscriptionData?.data?.messageStreamed || {};
+            
             if (newContent !== undefined && isActivityDetected.current === false) {
                 if (streamedMessageRef.current === '') {
                     setIsTyping(false);
@@ -150,12 +150,22 @@ const Template = () => {
                 });
                 isStreamingRef.current = true;
             } else if (isStreamingRef.current && isActivityDetected.current === false) {
-                if(!isEmpty(streamedMessageRef)) setMessages(prev => [...prev, { role: 'system', content: streamedMessageRef.current, type: currentType, timeStamp: messageStartTimeRef.current }]);
+                if (!isEmpty(streamedMessageRef)) {
+                    setMessages(prev => [
+                        ...prev, 
+                        {
+                            role: 'system', 
+                            content: streamedMessageRef.current, 
+                            type: currentType, 
+                            timeStamp: messageStartTimeRef.current 
+                        }
+                    ]);
+                }
                 setCurrentStreamedMessage('');
                 streamedMessageRef.current = '';
                 isStreamingRef.current = false;
             }
-        }
+        }        
     });
 
     useEffect(() => {
@@ -166,16 +176,6 @@ const Template = () => {
         }
     }, [currentStreamedMessage, messages]);
 
-    const { error: userErr } = useSubscription(USER_SUBSCRIPTION, {
-        variables: { templateId: data?.templateBySlug?.id },
-        onSubscriptionData: ({ subscriptionData }) => {
-            const { content } = subscriptionData?.data?.userStreamed || {};
-            if (content) {
-                setUserStreamedContent(prevContent => prevContent + content);
-            }
-        }
-    });
-
     useEffect(() => {
         if (!isEmpty(userStreamedContent)) {
             setMessages(prevMessages => [...prevMessages, { role: 'user', content: userStreamedContent, type: currentType, timeStamp: userStartTimeRef.current || getCurrentTime() }]);
@@ -184,9 +184,10 @@ const Template = () => {
     }, [currentType, userStreamedContent]);
 
     const { error: audioErr} = useSubscription(AUDIO_SUBSCRIPTION, {
+        skip: !data?.templateBySlug?.id,
         variables: { templateId: data?.templateBySlug?.id },
         onSubscriptionData: ({ subscriptionData }) => {
-            const { content } = subscriptionData?.data?.audioStreamed;
+            const { content } = subscriptionData?.data?.audioStreamed || {};
             if(content && isActivityDetected.current === false) {
                 audioQueue.current.push(content);
                 if (!isPlayingAudio.current) {
@@ -198,10 +199,11 @@ const Template = () => {
     });
 
     const { error: stopStreamErr} = useSubscription(STREAM_STOPPED_SUBSCRIPTION, {
+        skip: !data?.templateBySlug?.id,
         variables: { templateId: data?.templateBySlug?.id },
         onSubscriptionData: ({ subscriptionData }) => {
             console.log(subscriptionData);
-            const { templateId } = subscriptionData?.data?.streamStopped;
+            const { templateId } = subscriptionData?.data?.streamStopped || {};
             if (templateId === data?.templateBySlug?.id) {
                 handleStreamStopped();
             }
@@ -210,7 +212,6 @@ const Template = () => {
 
     useEffect(() => {
         if(msgErr) console.log('MESSAGE_STREAM: '+msgErr);
-        if(userErr) console.log('USER_STREAM: '+msgErr);
         if(audioErr) console.log('AUDIO_STREAM: '+msgErr);
         if(stopStreamErr) console.log('STREAM_STOPPED: '+stopStreamErr);
     })
