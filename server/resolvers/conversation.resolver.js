@@ -48,16 +48,13 @@ const conversationResolver = {
             console.log('Started recording');
             return true;
         },
-        stopRecording: async (_, { templateId, messages, transcribe }) => {
+        stopRecording: async (_, { templateId, messages }) => {
             if (activeStreams.has(templateId)) {
                 activeStreams.get(templateId).abort();
                 activeStreams.delete(templateId);
             }
-
             const cacheKey = `template:${templateId}`;
             try {
-                fs.unlinkSync(filePath);
-
                 let template = await getRedisCached(cacheKey);
                 if(!template) {
                     template = await Template.findByPk(templateId);
@@ -66,18 +63,16 @@ const conversationResolver = {
 
                 const abortController = new AbortController();
                 activeStreams.set(templateId, abortController);
-                
                 try {
                     const stream = await textCompletion(
                         template.model,
                         [
                             { 'role': 'system', content: template.prompt },
-                            ...messages,
-                            { 'role': 'user', content: transcribe }
+                            ...messages
                         ],
                         false
                     );
-                    if(abortController.signal.aborted) {
+                    if(!abortController.signal.aborted) {
                         pubsub.publish('MESSAGE_STREAMED', { 
                             messageStreamed: { role: 'system', content: stream.choices[0].message.content },
                             templateId

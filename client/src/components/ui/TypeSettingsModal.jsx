@@ -66,7 +66,7 @@ const TypeSettingsModal = ({ isOpen, onClose, types, onSelectType, selectedType 
                                                     size="sm"
                                                     step={1}
                                                     maxValue={60}
-                                                    minValue={1}
+                                                    minValue={10}
                                                     defaultValue={type.duration}
                                                     value={durationValues[type.id] || type.duration}
                                                     onChange={(value) => handleDurationChange(type.id, value)}

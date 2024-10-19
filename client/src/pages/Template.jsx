@@ -25,27 +25,26 @@ const Template = () => {
     const streamedMessageRef = useRef('');
     const chatContainerRef = useRef(null);
     const [isRecording, setIsRecording] = useState(false);
-    const audioRef = useRef(new Audio());
-    const audioQueue = useRef([]);
-    const isPlayingAudio = useRef(false);
-    const [userStreamedContent, setUserStreamedContent] = useState('');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedType, setSelectedType] = useState(null);
     const [recordingDuration, setRecordingDuration] = useState(null);
     const [isSystemAudioComplete, setIsSystemAudioComplete] = useState(true);
-    const [isCallActive, setIsCallActive] = useState(false);
-    const [isUserInitiatedStop, setIsUserInitiatedStop] = useState(false);
     const [remainingTime, setRemainingTime] = useState(0);
     const [isSaveChatModalOpen, setIsSaveChatModalOpen] = useState(false);
     const [chatName, setChatName] = useState();
     const navigate = useNavigate();
-    const [isContinuousMode, setIsContinuousMode] = useState(false);
     const messagesRef = useRef([]);
+    const [userStreamedContent, setUserStreamedContent] = useState('');
     const isActivityDetected = useRef(false);
     const [currentType, setCurrentType] = useState();
     const messageStartTimeRef = useRef(null);
-    const userStartTimeRef = useRef(null);
-
+    const recognitionRef = useRef(null);
+    const isRecognitionActive = useRef(false);
+    const isUserInterrupted = useRef(false);
+    const isRecordingStopped = useRef(false);
+    const isUserInitiatedStop = useRef(false);
+    const [isActiveCall, setIsActiveCall] = useState(false);
+    const vadRef = useRef(null);
 
     const { data, loading } = useQuery(GET_TEMPLATE_BY_SLUG, {
         variables: {
@@ -64,7 +63,6 @@ const Template = () => {
             const firstType = enableTypes.types[0];
             setSelectedType(firstType);
             setCurrentType(firstType.name);
-            console.log(firstType.name);
         }
     }, [enableTypes]);
 
@@ -89,7 +87,7 @@ const Template = () => {
     };
 
     const handleOpenSaveChatModal = () => {
-        if(messages.length) {
+        if (messages.length) {
             setIsSaveChatModalOpen(true);
         } else {
             toast.error('Start the conversation before storing this chat');
@@ -129,56 +127,71 @@ const Template = () => {
         scrollToBottom();
     }, [messages, currentStreamedMessage]);
 
+    const speak = (text) => {
+        const utterance = new SpeechSynthesisUtterance(text);
+        if (isUserInterrupted.current) {
+            window.speechSynthesis.cancel();
+            return;
+        }
+        
+        const voices = window.speechSynthesis.getVoices();
+        const selectedVoice = voices.find(voice => voice.name.includes('Google') || voice.lang.startsWith('en'));
+        if (selectedVoice) {
+            utterance.voice = selectedVoice;
+        }
+    
+        if (isActivityDetected.current || isUserInterrupted.current) {
+            window.speechSynthesis.cancel();
+            return;
+        }
+    
+        utterance.pitch = 0.8;
+        utterance.rate = 1.1;
+        window.speechSynthesis.speak(utterance);
+    };
+
+    // Add new streamed message to messages when it is available
+    const addStreamedMessage = useCallback(() => {
+        if (!isEmpty(currentStreamedMessage) || streamedMessageRef.current !== '') {
+            setMessages(prevMessages => {
+                const updatedMessages = [
+                    ...prevMessages, 
+                    {
+                        role: currentStreamedMessage.role || 'system',
+                        content: currentStreamedMessage.content || streamedMessageRef.current,
+                        type: currentStreamedMessage.type || currentType,
+                        timeStamp: currentStreamedMessage.timeStamp || getCurrentTime()
+                    }
+                ];
+                messagesRef.current = updatedMessages;
+                setCurrentStreamedMessage({});
+                streamedMessageRef.current = '';
+                return updatedMessages;
+            });
+        }
+    }, [currentStreamedMessage, currentType]);
+
+    // Add new user streamed content to messages when available
+    const addUserStreamedContent = useCallback(() => {
+        if (!isEmpty(userStreamedContent)) {
+            setMessages(prevMessages => {
+                const updatedMessages = [
+                    ...prevMessages, 
+                    { role: 'user', content: userStreamedContent, type: currentType, timeStamp: getCurrentTime() }
+                ];
+                messagesRef.current = updatedMessages;
+                setUserStreamedContent('');
+                return updatedMessages;
+            });
+        }
+    }, [currentType, userStreamedContent]);
+
     const { error: msgErr } = useSubscription(MESSAGE_SUBSCRIPTION, {
         skip: !data?.templateBySlug?.id,
         variables: { templateId: data?.templateBySlug?.id },
         onSubscriptionData: ({ subscriptionData }) => {
             const { role, content: newContent } = subscriptionData?.data?.messageStreamed;
-            // Speech synthesis
-            const speak = (text) => {
-                const utterance = new SpeechSynthesisUtterance(text);
-            
-                // Ensure voices are loaded before proceeding
-                const voices = window.speechSynthesis.getVoices();
-            
-                if (voices.length === 0) {
-                    // Voices are not loaded yet, add an event listener
-                    window.speechSynthesis.onvoiceschanged = () => {
-                        const loadedVoices = window.speechSynthesis.getVoices();
-                        const selectedVoice = loadedVoices.find(voice => voice.name.includes('Google') || voice.lang.startsWith('en') || voice.lang.includes('male'));
-                        
-                        if (selectedVoice) {
-                            utterance.voice = selectedVoice;
-                        }
-                        console.log('Voice selected:', utterance.voice);
-                        if (isActivityDetected.current) {
-                            const synth = window.speechSynthesis;
-                            synth.cancel();  // Cancel ongoing speech if activity is detected
-                        }
-                        utterance.pitch = 0.9;
-                        utterance.rate = 1.1;
-                        utterance.lang = 'en-GB';
-                        console.log(utterance);
-                        // utterance.volume = 1;
-                        window.speechSynthesis.speak(utterance);
-                    };
-                } else {
-                    // Voices are already loaded
-                    const selectedVoice = voices.find(voice => voice.name.includes('Google') || voice.lang.startsWith('en'));
-                    
-                    if (selectedVoice) {
-                        utterance.voice = selectedVoice;
-                    }
-                    console.log('Voice selected:', utterance.voice);
-                    if (isActivityDetected.current) {
-                        const synth = window.speechSynthesis;
-                        synth.cancel();  // Cancel ongoing speech if activity is detected
-                    }
-                    window.speechSynthesis.speak(utterance);
-                }
-            };
-    
-            if (newContent !== undefined && isActivityDetected.current === false) {
+            if (newContent !== undefined && isActivityDetected.current === false && isUserInterrupted.current === false) {
                 if (streamedMessageRef.current === '') {
                     setIsTyping(false);
                     messageStartTimeRef.current = getCurrentTime();
@@ -191,55 +204,86 @@ const Template = () => {
                     timeStamp: messageStartTimeRef.current
                 });
                 isStreamingRef.current = true;
-    
-                // Trigger speech synthesis when new content is streamed
                 speak(newContent);
-    
             } else if (isStreamingRef.current && isActivityDetected.current === false) {
-                if (!isEmpty(streamedMessageRef)) {
-                    setMessages(prev => [
-                        ...prev,
-                        {
-                            role: 'system',
-                            content: streamedMessageRef.current,
-                            type: currentType,
-                            timeStamp: messageStartTimeRef.current
-                        }
-                    ]);
-                    
-                    // Read the final streamed message
-                    speak(streamedMessageRef.current);
-                }
-    
-                setCurrentStreamedMessage('');
-                streamedMessageRef.current = '';
+                addStreamedMessage();
                 isStreamingRef.current = false;
             }
+        },
+        onComplete: () => {
+            setIsSystemAudioComplete(true);
+            if (selectedType?.isAutomatic) handleStartCall();
         }
-    }); 
+    });
+
+    const initializeSpeechRecognition = useCallback(() => {
+        if (!('webkitSpeechRecognition' in window)) {
+            console.error('Speech recognition not supported in this browser.');
+            return;
+        }
+    
+        const recognition = new window.webkitSpeechRecognition() || new window.SpeechRecognition();
+        recognition.lang = 'en-US';
+        recognition.interimResults = true;
+        recognition.continuous = true;
+    
+        let finalTranscript = ''; // To hold the final transcript
+    
+        recognition.onresult = (event) => {
+            let interimTranscript = ''; // To hold interim results
+    
+            // Loop through results
+            for (let i = event.resultIndex; i < event.results.length; i++) {
+                const result = event.results[i];
+                if (result.isFinal) {
+                    finalTranscript += result[0].transcript; // Append final results
+                    setUserStreamedContent(finalTranscript); // Set userStreamedContent state
+                    console.log('Final transcript:', finalTranscript);
+                } else {
+                    interimTranscript += result[0].transcript; // Keep adding interim results
+                }
+            }
+    
+            // You can use interimTranscript for displaying partial results in the UI
+            console.log('Interim transcript:', interimTranscript);
+        };
+    
+        recognition.onerror = (event) => {
+            setIsRecording(false);
+            console.error('Speech recognition error:', event.error);
+        };
+    
+        recognition.onend = () => {
+            console.log('Speech recognition ended.');
+            setIsRecording(false);
+            isRecognitionActive.current = false;
+        };
+    
+        recognitionRef.current = recognition; // Store recognition instance for future use
+    }, []);
 
     useEffect(() => {
-        if (!isStreamingRef.current && !isEmpty(currentStreamedMessage)) {
-            setMessages(prev => [...prev, { role: 'system', content: currentStreamedMessage.content, type: currentStreamedMessage.type, timeStamp: currentStreamedMessage.timeStamp }]);
-            setCurrentStreamedMessage('');
-            streamedMessageRef.current = '';
-        }
-    }, [currentStreamedMessage, messages]);
+        initializeSpeechRecognition();
+    }, [initializeSpeechRecognition]);
 
-    const { error: stopStreamErr} = useSubscription(STREAM_STOPPED_SUBSCRIPTION, {
+    useEffect(() => {
+        addStreamedMessage();
+    }, [currentStreamedMessage]);
+
+    const { error: stopStreamErr } = useSubscription(STREAM_STOPPED_SUBSCRIPTION, {
         variables: { templateId: data?.templateBySlug?.id },
         onSubscriptionData: ({ subscriptionData }) => {
             const { templateId } = subscriptionData?.data?.streamStopped;
             if (templateId === data?.templateBySlug?.id) {
-                // handleStreamStopped();
+                window.speechSynthesis.cancel();
             }
         }
     });
 
     useEffect(() => {
-        if(msgErr) console.log('MESSAGE_STREAM: '+msgErr);
-        if(stopStreamErr) console.log('STREAM_STOPPED: '+stopStreamErr);
-    })
+        if (msgErr) console.log('MESSAGE_STREAM: '+msgErr);
+        if (stopStreamErr) console.log('STREAM_STOPPED: '+stopStreamErr);
+    });
 
     const sendMessageToServer = useCallback(async (messages) => {
         try {
@@ -255,164 +299,143 @@ const Template = () => {
     }, [data?.templateBySlug?.id, sendMessage]);
 
     const handleSendMessage = useCallback((message) => {
+        addStreamedMessage();
+        addUserStreamedContent();
         setMessages(prevMessages => {
-            const newMessages = !isEmpty(currentStreamedMessage)
-                ? [...prevMessages, { role: 'system', content: currentStreamedMessage.content, type: currentStreamedMessage.type, timeStamp: currentStreamedMessage.timeStamp }, { role: 'user', content: message, type: currentType, timeStamp: getCurrentTime() }]
-                : [...prevMessages, { role: 'user', content: message, type: currentType, timeStamp: getCurrentTime() }];
+            const newMessages = [...prevMessages, { role: 'user', content: message, type: currentType, timeStamp: getCurrentTime() }];
             sendMessageToServer(newMessages);
             return newMessages;
         });
-
-        setCurrentStreamedMessage({});
-        streamedMessageRef.current = '';
-        isStreamingRef.current = false;
         setIsTyping(true);
+    }, [addStreamedMessage, addUserStreamedContent, currentType, sendMessageToServer]);
 
-    }, [currentStreamedMessage, currentType, sendMessageToServer]);
-
-    useEffect(() => {
-        if (messages.length > 0) {
-            console.log(messages);
-            messagesRef.current = messages;
-        }
-    }, [messages]);
-
-    const isEmpty = (obj) => Object.keys(obj).length === 0;
-
-    const handleSaveChat = async (name) => {
-        if (userLoading || userError || !userData?.me) {
-            toast.error('User not authenticated');
-            return;
-        }
-        try {
-            if(currentStreamedMessage.content) {
-                setMessages(prevMessages => [
-                    ...prevMessages,
-                    { role: currentStreamedMessage.role, content: currentStreamedMessage.content },
-                ]);
-            }
-
-            const result = await saveChat({
-                variables: {
-                    input: {
-                        userId: userData.me.id,
-                        templateId: data?.templateBySlug?.id,
-                        chats: messages,
-                        name: name ? name : chatName,
-                        id: savedChatId
-                    }
-                }
-            });
-    
-            if (result.data && result.data.saveChat && result.data.saveChat.success) {
-                setIsSaveChatModalOpen(false);
-                toast.success('Chat saved successfully');
-                const savedChatId = result.data.saveChat.savedChat.id;
-                navigate(`/template/${templateSlug}/${savedChatId}`);
-            } else {
-                toast.error('Failed to save chat');
-                throw new Error(result.data?.saveChat?.message || 'Failed to save chat');
-            }
-        } catch (error) {
-            console.error('Error saving chat:', error);
-            toast.error(error.message || 'Something went wrong. Try again later.');
-        }
+    const isEmpty = (value) => {
+        return typeof value !== 'string' || value.trim() === ''; 
     };
 
-    const onDeleteChat = async() => {
-        if (userLoading || userError || !userData?.me) {
-            toast.error('User not authenticated');
-            return;
-        }
+
+    const sendStopRecording = useCallback(async (updatedMessages) => {
+        if (isRecordingStopped.current) return;
+        isRecordingStopped.current = true;
         try {
-            const result = await deleteChat({
-                variables: { savedChatId, userId: userData.me.id }
+            await stopRecording({
+                variables: {
+                    templateId: data?.templateBySlug?.id,
+                    messages: updatedMessages
+                }
             });
-    
-            if (result.data) {
-                setIsSaveChatModalOpen(false);
-                toast.success('Chat deleted successfully');
-                navigate(`/template/${templateSlug}`);
-                setMessages([]);
-                setCurrentStreamedMessage('');
-                setChatName(data?.templateBySlug?.aiRole);
-            } else {
-                toast.error('Failed to delete chat');
-            }
         } catch (error) {
-            console.error('Error saving chat:', error);
-            toast.error(error.message || 'Something went wrong. Try again later.');
+            console.error('Error sending message:', error);
+        } finally {
+            isRecordingStopped.current = false;
         }
-    }
+    }, [data?.templateBySlug?.id, stopRecording]);
 
-    const onFeedback = () => {
-        window.location.assign(`/analytics/${templateSlug}/${savedChatId}`);
-    }
+    const stopStreamingData = useCallback(async () => {
+        if (recognitionRef.current && isRecognitionActive.current) {
+            recognitionRef.current?.stop();
+            isRecognitionActive.current = false;
+        }
+        isUserInterrupted.current = true;
+        try {
+            await stopStreaming({
+                variables: {
+                    templateId: data?.templateBySlug?.id
+                }
+            });
+        } catch (error) {
+            console.error("Error stopping streaming:", error);
+        }
+    }, [data?.templateBySlug?.id, stopStreaming]);
 
-    const speechRecongnition = useCallback(async (continuous=false) => {
-        if (!('webkitSpeechRecognition' in window)) {
-            console.error('Speech recognition not supported in this browser.');
+    const handleStopRecording = useCallback(async (isUserStopped = false) => {
+        if (isUserStopped && (selectedType?.isAutomatic || selectedType?.isContinous)) {
+            await stopStreamingData();
+            isUserInitiatedStop.current = true;
+            setIsActiveCall(false);
+        }
+
+        recognitionRef.current?.stop();
+        isRecognitionActive.current = false;
+        setIsRecording(false);
+
+        // Ensure all messages are added before sending the stop recording request
+        addStreamedMessage();
+        addUserStreamedContent();
+        console.log(messagesRef.current);
+        setTimeout(() => {
+            console.log('Messages before sending:', messagesRef.current); // Ensure updated messagesRef
+            if (!isEmpty(messagesRef.current)) {
+                sendStopRecording(messagesRef.current);
+            }
+        }, 500);
+        
+        isStreamingRef.current = false;
+        isUserInterrupted.current = false;
+    }, [addStreamedMessage, addUserStreamedContent, selectedType?.isAutomatic, selectedType?.isContinous, sendStopRecording, stopStreamingData]);
+
+    const handleStartRecording = useCallback(async (stopStreaming = true) => {
+        addStreamedMessage();
+        addUserStreamedContent();
+        setIsActiveCall(true);
+        window.speechSynthesis.cancel();
+        if (stopStreaming) await stopStreamingData();
+        if (!recognitionRef.current || isRecognitionActive.current) {
+            console.warn('Speech recognition is already running or not initialized.');
             return;
         }
-
-        // Create a new SpeechRecognition instance
-        const recognition = new window.webkitSpeechRecognition() || new window.SpeechRecognition();
-
-        // Set recognition options
-        recognition.lang = 'en-US'; // Set language
-        recognition.interimResults = true; // Get interim results while speaking
-        recognition.continuous = continuous; // Set to true if you want continuous speech recognition
-
-        // Handle when speech is recognized and transcribed
-        recognition.onresult = (event) => {
-            let transcript = '';
-            
-            // Iterate through the results and get the transcript
-            for (let i = event.resultIndex; i < event.results.length; i++) {
-                const result = event.results[i];
-                transcript += result[0].transcript;
-
-                // Update the state with the transcribed text (replace the current content)
-                setUserStreamedContent(transcript);
-
-                // You can handle the final transcription separately if needed
-                if (result.isFinal) {
-                    // setUserStreamedContent(transcript);
-                    console.log('Final transcription:', transcript);
-                } else {
-                    console.log('Interim transcription:', transcript);
-                }
-            }
-        };
-
-        // Handle when the recognition ends
-        recognition.onend = () => {
-            console.log('Speech recognition ended.');
-        };
-
-        // Handle errors
-        recognition.onerror = (event) => {
-            console.error('Speech recognition error:', event.error);
-        };
-
-        // Start the speech recognition
-        recognition.start();
-
-        console.log('Speech recognition started.');
-    }, [])
-    
-
-    const handleStartCall = useCallback(async() => {
-        speechRecongnition();
-    }, [speechRecongnition]);
-
-    const handleStopRecording = useCallback(async(stopStream=false) => {
-        if(stopStream) {
-            setIsUserInitiatedStop(true);
-            await stopStreaming({
-                
-            })
+        setIsRecording(true);
+        try {
+            recognitionRef.current?.start();
+        } catch (error) {
+            console.warn('Speech recognition is already running');
         }
+        isRecognitionActive.current = true;
+    }, [addStreamedMessage, addUserStreamedContent, stopStreamingData]);
+
+    const startVoiceActivityDetection = useCallback(() => {
+        if (vadRef.current) return;
+        navigator.mediaDevices.getUserMedia({ audio: true })
+            .then(stream => {
+                const audioContext = new AudioContext();
+
+                vadRef.current = vad(audioContext, stream, {
+                    onVoiceStart: () => {
+                        isActivityDetected.current = true;
+                        window.speechSynthesis.cancel();
+                        handleStartRecording();
+                    },
+                    onVoiceStop: () => {
+                        isActivityDetected.current = false;
+                        if (!isEmpty(messagesRef.current)) {
+                            handleStopRecording(false);
+                        }
+                    },
+                    noiseCaptureDuration: 300,
+                    minNoiseLevel: 0.3,
+                    maxNoiseLevel: 0.9,
+                });
+            })
+            .catch(err => console.error('Error accessing microphone:', err));
+    }, [handleStartRecording, handleStopRecording]);
+
+    const handleStartCall = useCallback(async () => {
+        if (selectedType?.isContinous) {
+            startVoiceActivityDetection();
+        } else {
+            handleStartRecording();
+        }
+    }, [handleStartRecording, selectedType?.isContinous, startVoiceActivityDetection]);
+
+    useEffect(() => {
+        const handleBeforeUnload = () => {
+            window.speechSynthesis.cancel();
+        };
+        window.addEventListener('beforeunload', handleBeforeUnload);
+        return () => {
+            window.removeEventListener('beforeunload', handleBeforeUnload);
+            window.speechSynthesis.cancel();
+        };
     }, []);
 
     if (loading || typeLoading || savedChatLoading) return <div className="flex items-center justify-center h-screen">Loading...</div>;
@@ -425,16 +448,13 @@ const Template = () => {
                     {messages && messages.map((message, index) => (
                         <ChatMessage key={`${message.role}-${index}`} message={message} />
                     ))}
-                    {!isEmpty(userStreamedContent) && (
-                        <ChatMessage message={{ role: 'user', content: userStreamedContent }} />
-                    )}
-                    {!isEmpty(currentStreamedMessage) && currentStreamedMessage.content &&  (
+                    {!isEmpty(currentStreamedMessage) && currentStreamedMessage.content && (
                         <ChatMessage message={{ role: currentStreamedMessage.role, content: currentStreamedMessage.content, timeStamp: currentStreamedMessage.timeStamp, type: currentStreamedMessage.type }} />
                     )}
                     {isRecording && isEmpty(currentStreamedMessage) && (
                         <ChatMessage message={{ role: 'user', content: selectedType.isAutomatic ? `Listening...(${remainingTime.toString()} seconds remaining)` : 'Listening...' }} />
                     )}
-                    {isTyping && !isRecording && isEmpty(currentStreamedMessage) && (
+                    {isTyping && !isRecording && (
                         <ChatMessage message={{ role: 'system', content: 'Thinking...' }} />
                     )}
                 </div>
@@ -445,12 +465,11 @@ const Template = () => {
                     onStopRecording={() => handleStopRecording(true)}
                     isRecording={isRecording}
                     onOpenSettings={handleOpenModal}
-                    isCallActive={isCallActive}
                     onSaveChat={handleOpenSaveChatModal}
-                    onDeleteChat={onDeleteChat}
+                    // onDeleteChat={onDeleteChat}
                     savedChatId={savedChatId}
-                    onFeedback={onFeedback}
-                    isContinuousMode={isContinuousMode}
+                    // onFeedback={onFeedback}
+                    isContinuousMode={isActiveCall}
                 />
                 <TypeSettingsModal
                     isOpen={isModalOpen}
@@ -462,12 +481,12 @@ const Template = () => {
                 <SaveChatModal
                     isOpen={isSaveChatModalOpen}
                     onClose={() => setIsSaveChatModalOpen(false)}
-                    onSave={handleSaveChat}
+                    // onSave={handleSaveChat}
                     savedName={chatName}
                 />
             </div>
         </>
     );
-}
+};
 
 export default Template;
