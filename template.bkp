@@ -64,7 +64,7 @@ const Template = () => {
 
     useEffect(() => {
         if (enableTypes && enableTypes.types && enableTypes.types.length > 0) {
-            const firstType = enableTypes.types[0];
+            const firstType = enableTypes.types[2];
             setSelectedType(firstType);
             setCurrentType(firstType.name);
             console.log(firstType.name);
@@ -193,7 +193,6 @@ const Template = () => {
             if(content && isActivityDetected.current === false) {
                 audioQueue.current.push(content);
                 if (!isPlayingAudio.current) {
-                    console.log(getCurrentTime());
                     playNextAudio();
                 }
             }
@@ -301,6 +300,7 @@ const Template = () => {
                 });
             }
             await startRecording();
+            userStartTimeRef.current = getCurrentTime();
             setIsRecording(true);
             setCurrentStreamedMessage({});
             streamedMessageRef.current = '';
@@ -378,10 +378,10 @@ const Template = () => {
             stopVoiceActivityDetection();
             setIsContinuousMode(false);
         }
+        console.log(messagesRef);
         setIsUserInitiatedStop(isUserInitiated);
         if ((mediaRecorderRef.current && !selectedType.isAutomatic && !selectedType.isContinous) || (mediaRecorderRef.current && !isUserInitiated && (selectedType?.isAutomatic || selectedType?.isContinous))) {
             mediaRecorderRef.current.stop();
-            userStartTimeRef.current = getCurrentTime();
             await stopRecording(
                 { 
                     variables: {
@@ -548,10 +548,9 @@ const Template = () => {
                         handleStartRecording();
                     },
                     onVoiceStop: () => {
-                        // setTimeout(() => {
-                        //     isActivityDetected.current = false;
-                        // }, 100);
-                        isActivityDetected.current = false;
+                        setTimeout(() => {
+                            isActivityDetected.current = false;
+                        }, 100);
                         console.log('Stopped: '+isActivityDetected.current);
                         setIsCallActive(false);
                         handleStopRecording(false);
@@ -561,7 +560,7 @@ const Template = () => {
                     smoothingTimeConstant: 0.9,
                     // minCaptureFreq: 150,
                     // maxCaptureFreq: 3500,
-                    noiseCaptureDuration: 200,
+                    noiseCaptureDuration: 300,
                     minNoiseLevel: 0.4,
                     maxNoiseLevel: 0.8,
                     // avgNoiseMultiplier: 1.4,

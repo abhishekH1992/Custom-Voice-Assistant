@@ -28,19 +28,11 @@ const transcribeAudio = async(filePath) => {
     }
 }
 
-const textToSpeech = async function*(text, voice = 'alloy') {
-    const response = await openai.audio.speech.create({
-        model: "tts-1",
-        voice: voice,
-        input: text,
-    });
-    yield* response.body;
-};
-
 const combinedStream = async function*(textStream, templateId, abortSignal) {
-    const REGULAR_AUDIO_CHUNK_SIZE = 512; // Reduce chunk size for lower latency
-    const INITIAL_AUDIO_CHUNK_SIZE = Math.floor(REGULAR_AUDIO_CHUNK_SIZE / 2);
-    const INITIAL_CHUNKS = 5; // Stream smaller chunks initially for faster audio delivery
+    const REGULAR_AUDIO_CHUNK_SIZE = parseInt(process.env.AUDIO_STREAM_CHUNK_SIZE, 10);
+    console.log(REGULAR_AUDIO_CHUNK_SIZE);
+    const INITIAL_AUDIO_CHUNK_SIZE = Math.floor(REGULAR_AUDIO_CHUNK_SIZE / 3);
+    const INITIAL_CHUNKS = 5;
 
     let textBuffer = [];
     let audioBuffer = Buffer.allocUnsafe(REGULAR_AUDIO_CHUNK_SIZE);
@@ -49,45 +41,31 @@ const combinedStream = async function*(textStream, templateId, abortSignal) {
     let isTextStreamed = false;
 
     try {
-        // Step 1: Process text stream
         for await (const part of textStream) {
             if (abortSignal.aborted) throw new AbortError('Stream aborted');
-            
             const content = part.choices[0]?.delta?.content || '';
             if (content) {
                 textBuffer.push(content);
-
-                // Yield text content early to minimize latency
                 yield {
                     messageStreamed: { role: 'system', content },
                     templateId,
                 };
             }
         }
-
         isTextStreamed = true;
         const fullText = textBuffer.join('');
-
-        // Step 2: Generate audio in parallel using the full text
         const audioGenerator = textToSpeech(fullText, templateId.voice);
         for await (const audioChunk of audioGenerator) {
             if (abortSignal.aborted) throw new AbortError('Stream aborted');
-
-            // Optimize buffer resizing
             if (audioBufferOffset + audioChunk.length > audioBuffer.length) {
                 const newSize = Math.max(audioBuffer.length * 2, audioBufferOffset + audioChunk.length);
                 const newBuffer = Buffer.allocUnsafe(newSize);
                 audioBuffer.copy(newBuffer, 0, 0, audioBufferOffset);
                 audioBuffer = newBuffer;
             }
-
             audioChunk.copy(audioBuffer, audioBufferOffset);
             audioBufferOffset += audioChunk.length;
-
-            // Dynamically adjust chunk size
             const currentChunkSize = chunkCount < INITIAL_CHUNKS ? INITIAL_AUDIO_CHUNK_SIZE : REGULAR_AUDIO_CHUNK_SIZE;
-
-            // Yield audio content in smaller chunks
             while (audioBufferOffset >= currentChunkSize) {
                 const chunkToSend = audioBuffer.slice(0, currentChunkSize);
 
@@ -97,13 +75,9 @@ const combinedStream = async function*(textStream, templateId, abortSignal) {
                     audioStreamed: { content: chunkToSend.toString('base64') },
                     templateId,
                 };
-
-                // Move remaining data to the beginning of the buffer
                 audioBuffer.copy(audioBuffer, 0, currentChunkSize, audioBufferOffset);
                 audioBufferOffset -= currentChunkSize;
                 chunkCount++;
-
-                // Resize buffer to minimize memory usage
                 if (audioBufferOffset > 0 && audioBufferOffset < audioBuffer.length / 2) {
                     const newBuffer = Buffer.allocUnsafe(audioBuffer.length);
                     audioBuffer.copy(newBuffer, 0, 0, audioBufferOffset);
@@ -111,8 +85,6 @@ const combinedStream = async function*(textStream, templateId, abortSignal) {
                 }
             }
         }
-
-        // Stream any remaining audio
         if (audioBufferOffset > 0) {
             yield {
                 audioStreamed: { content: audioBuffer.slice(0, audioBufferOffset).toString('base64') },
@@ -124,12 +96,21 @@ const combinedStream = async function*(textStream, templateId, abortSignal) {
             console.log(`Stream for template ${templateId} was aborted.`);
         } else {
             console.error('Error in combinedStream:', error);
-            throw error; // Rethrow the error to be caught by the caller
+            throw error;
         }
     }
 };
 
-// Custom AbortError class
+const textToSpeech = async function*(text, voice = 'alloy') {
+    const response = await openai.audio.speech.create({
+        model: "tts-1",
+        voice: voice,
+        input: text,
+    });
+    yield* response.body;
+};
+
+// Custom AbortError class for handling abort signal
 class AbortError extends Error {
     constructor(message) {
         super(message);
