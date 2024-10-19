@@ -7,8 +7,15 @@ const isProduction = process.env.NODE_ENV === 'production';
 let redisClient = null;
 
 const createRedisClient = async () => {
+    if (redisClient) {
+        return redisClient;
+    }
     if (isProduction) {
-        const client = new Redis(process.env.REDIS_URL);
+        const client = new Redis(process.env.REDIS_URL, {
+            tls: {
+                rejectUnauthorized: false, // Allow self-signed certificates
+            }
+        });
         client.on('error', (err) => console.error('Redis Client Error', err));
         client.on('connect', () => console.log('Redis Client Connected'));
         client.on('reconnecting', () => console.log('Redis Client Reconnecting'));
