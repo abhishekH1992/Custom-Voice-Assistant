@@ -7,8 +7,9 @@
     "start": "node server/index.js",
     "dev": "nodemon server/index-dev.js",
     "build": "NODE_OPTIONS=--openssl-legacy-provider npm run build-client",
-    "build-client": "cd client && npm install --legacy-peer-deps && npm run build",
-    "heroku-postbuild": "npm install --legacy-peer-deps && npm run build-client"
+    "build-client": "cd client && npm install --legacy-peer-deps && npm run build && npm run build-css",
+    "heroku-postbuild": "npm install --legacy-peer-deps && npm run build-client",
+    "build-css": "sass client/src/assets/scss/custom.scss client/src/assets/css/custom.css --no-source-map"
   },
   "keywords": [],
   "author": "",
