@@ -2,7 +2,7 @@ import { useQuery } from "@apollo/client";
 import Header from '../components/nav/Header';
 import { GET_TEMPLATES } from '../graphql/queries/templates.query';
 import { useTheme } from "../context/ThemeContext";
-import CardSkeleton from '../components/ui/CardSkeleton';
+import CardSkeleton from '../components/ui/skeleton/CardSkeleton';
 import TemplateCard from "../components/ui/TemplateCard";
 import { Link } from "react-router-dom";
 

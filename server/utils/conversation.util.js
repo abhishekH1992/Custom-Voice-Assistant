@@ -1,8 +1,6 @@
 const { openai, audioStreamChunkSize } = require('./openai.util');
 const fs = require('fs');
 const { Buffer } = require('buffer');
-const stream = require('stream');
-const util = require('util');
 
 const textCompletion = async(model, messages, stream = false) => {
     const response =  await openai.chat.completions.create({
@@ -28,30 +26,12 @@ const transcribeAudio = async(filePath) => {
     }
 }
 
-const textToSpeech = async function*(text, voice='alloy') {
-    const response = await openai.audio.speech.create({
-        model: "tts-1",
-        voice: voice,
-        input: text,
-    });
-    yield* response.body;
-};
-
-
 const combinedStream = async function*(textStream, templateId, abortSignal) {
-    // Ensure audioStreamChunkSize is a number
-    const REGULAR_AUDIO_CHUNK_SIZE = typeof audioStreamChunkSize === 'string' 
-        ? parseInt(audioStreamChunkSize, 10) 
-        : audioStreamChunkSize;
-
-    if (isNaN(REGULAR_AUDIO_CHUNK_SIZE)) {
-        throw new Error(`Invalid audioStreamChunkSize: ${audioStreamChunkSize}`);
-    }
-
+    const REGULAR_AUDIO_CHUNK_SIZE = parseInt(audioStreamChunkSize, 10);
     const INITIAL_AUDIO_CHUNK_SIZE = Math.floor(REGULAR_AUDIO_CHUNK_SIZE / 2);
-    const INITIAL_CHUNKS = 10;
+    const INITIAL_CHUNKS = 5;
 
-    const textBuffer = [];
+    let textBuffer = [];
     let audioBuffer = Buffer.allocUnsafe(REGULAR_AUDIO_CHUNK_SIZE);
     let audioBufferOffset = 0;
     let chunkCount = 0;
@@ -63,47 +43,36 @@ const combinedStream = async function*(textStream, templateId, abortSignal) {
             const content = part.choices[0]?.delta?.content || '';
             if (content) {
                 textBuffer.push(content);
-                if (!isTextStreamed) {
-                    yield {
-                        messageStreamed: { role: 'system', content },
-                        templateId,
-                    };
-                }
+                yield {
+                    messageStreamed: { role: 'system', content },
+                    templateId,
+                };
             }
         }
-
         isTextStreamed = true;
-        
-        const text = textBuffer.join('');
-        const audioGenerator = textToSpeech(text, templateId.voice);
-
+        const fullText = textBuffer.join('');
+        const audioGenerator = textToSpeech(fullText, templateId.voice);
         for await (const audioChunk of audioGenerator) {
             if (abortSignal.aborted) throw new AbortError('Stream aborted');
-            
             if (audioBufferOffset + audioChunk.length > audioBuffer.length) {
                 const newSize = Math.max(audioBuffer.length * 2, audioBufferOffset + audioChunk.length);
                 const newBuffer = Buffer.allocUnsafe(newSize);
                 audioBuffer.copy(newBuffer, 0, 0, audioBufferOffset);
                 audioBuffer = newBuffer;
             }
-            
             audioChunk.copy(audioBuffer, audioBufferOffset);
             audioBufferOffset += audioChunk.length;
-            
             const currentChunkSize = chunkCount < INITIAL_CHUNKS ? INITIAL_AUDIO_CHUNK_SIZE : REGULAR_AUDIO_CHUNK_SIZE;
-            console.log(audioBufferOffset, currentChunkSize);
-            
             while (audioBufferOffset >= currentChunkSize) {
                 const chunkToSend = audioBuffer.slice(0, currentChunkSize);
+                if (abortSignal.aborted) throw new AbortError('Stream aborted');
                 yield {
                     audioStreamed: { content: chunkToSend.toString('base64') },
-                    templateId
+                    templateId,
                 };
-                
                 audioBuffer.copy(audioBuffer, 0, currentChunkSize, audioBufferOffset);
                 audioBufferOffset -= currentChunkSize;
                 chunkCount++;
-                
                 if (audioBufferOffset > 0 && audioBufferOffset < audioBuffer.length / 2) {
                     const newBuffer = Buffer.allocUnsafe(audioBuffer.length);
                     audioBuffer.copy(newBuffer, 0, 0, audioBufferOffset);
@@ -111,25 +80,33 @@ const combinedStream = async function*(textStream, templateId, abortSignal) {
                 }
             }
         }
-        
-        // Send any remaining audio data
         if (audioBufferOffset > 0) {
             const finalChunk = audioBuffer.slice(0, audioBufferOffset);
             yield {
-                audioStreamed: { content: finalChunk.toString('base64') },
-                templateId
+                audioStreamed: { content: audioBuffer.slice(0, audioBufferOffset).toString('base64') },
+                templateId,
             };
         }
     } catch (error) {
         if (error.name === 'AbortError') {
-            console.log(`Stream for template ${templateId} was aborted`);
+            console.log(`Stream for template ${templateId} was aborted.`);
         } else {
             console.error('Error in combinedStream:', error);
-            throw error; // Re-throw the error to be caught by the caller
+            throw error;
         }
     }
 };
 
+const textToSpeech = async function*(text, voice = 'alloy') {
+    const response = await openai.audio.speech.create({
+        model: "tts-1",
+        voice: voice,
+        input: text,
+    });
+    yield* response.body;
+};
+
+// Custom AbortError class for handling abort signal
 class AbortError extends Error {
     constructor(message) {
         super(message);

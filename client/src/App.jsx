@@ -12,10 +12,13 @@ import Register from './pages/auth/Register';
 import { Toaster } from "react-hot-toast"
 import Feedback from './pages/Feedback';
 import SavedChats from './pages/SavedChats';
+import AuthSkeleton from './components/ui/skeleton/AuthSkeleton';
+import CardSkeleton from './components/ui/skeleton/CardSkeleton';
+import Header from './components/nav/Header';
 
 const ProtectedRoute = ({ children }) => {
     const { loading, error, data } = useQuery(ME_QUERY);
-    if (loading) return <div>Loading...</div>;
+    if(loading) return null;
     if (error) {
         localStorage.removeItem('token');
         return <Navigate to="/login" />;
@@ -26,7 +29,7 @@ const ProtectedRoute = ({ children }) => {
 
 const AuthRoute = ({ children }) => {
     const { loading, error, data } = useQuery(ME_QUERY);
-    if (loading) return <div>Loading...</div>;
+    if (loading) return <AuthSkeleton />;
     if (!error && data) {
         // User is authenticated, redirect to home
         return <Navigate to="/" replace />;
@@ -40,7 +43,6 @@ function App() {
     const isAuthPage = location.pathname === '/login' || location.pathname === '/register';
     const { loading, error, data: userData } = useQuery(ME_QUERY);
 
-    if (loading) return <div>Loading...</div>;
     if (error && !isAuthPage) return <Navigate to="/login" />;
 
     return (
@@ -53,43 +55,56 @@ function App() {
             )}
             <main className={`flex-1 flex flex-col ${isAuthPage ? 'w-full' : ''}`}>
                 <div className={`flex-1 ${isTemplatePage ? '' : 'overflow-y-auto scrollbar-hide'}`}>
-                    <Routes>
-                        <Route path='/login' element={
-                            <AuthRoute>
-                                <Login />
-                            </AuthRoute>
-                        } />
-                        <Route path='/register' element={
-                            <AuthRoute>
-                                <Register />
-                            </AuthRoute>
-                        } />
-                        <Route path='/' element={
-                            <ProtectedRoute>
-                                <TemplateList />
-                            </ProtectedRoute>
-                        } />
-                        <Route path='/saved-chats' element={
-                            <ProtectedRoute>
-                                <SavedChats />
-                            </ProtectedRoute>
-                        } />
-                        <Route path='/template/:templateSlug' element={
-                            <ProtectedRoute>
-                                <Template />
-                            </ProtectedRoute>
-                        } />
-                        <Route path='/template/:templateSlug/:savedChatId' element={
-                            <ProtectedRoute>
-                                <Template />
-                            </ProtectedRoute>
-                        } />
-                        <Route path='/analytics/:templateSlug/:savedChatId' element={
-                            <ProtectedRoute>
-                                <Feedback />
-                            </ProtectedRoute>
-                        } />
-                    </Routes>
+                    {loading && !isAuthPage ? (
+                        <>
+                            <Header isLoading={true} />
+                            <div className="px-6 my-5 sm:mt-6">
+                                <div className="grid grid-cols-1 gap-5 s:grid-cols-2 sm:grid-cols-2 md:grid-cols-3 max-w-940 m-auto">
+                                    {[...Array(6)].map((_, index) => (
+                                        <CardSkeleton key={index} />
+                                    ))}
+                                </div>
+                            </div>
+                        </>
+                    ) : (
+                        <Routes>
+                            <Route path='/login' element={
+                                <AuthRoute>
+                                    <Login />
+                                </AuthRoute>
+                            } />
+                            <Route path='/register' element={
+                                <AuthRoute>
+                                    <Register />
+                                </AuthRoute>
+                            } />
+                            <Route path='/' element={
+                                <ProtectedRoute>
+                                    <TemplateList />
+                                </ProtectedRoute>
+                            } />
+                            <Route path='/saved-chats' element={
+                                <ProtectedRoute>
+                                    <SavedChats />
+                                </ProtectedRoute>
+                            } />
+                            <Route path='/template/:templateSlug' element={
+                                <ProtectedRoute>
+                                    <Template />
+                                </ProtectedRoute>
+                            } />
+                            <Route path='/template/:templateSlug/:savedChatId' element={
+                                <ProtectedRoute>
+                                    <Template />
+                                </ProtectedRoute>
+                            } />
+                            <Route path='/analytics/:templateSlug/:savedChatId' element={
+                                <ProtectedRoute>
+                                    <Feedback />
+                                </ProtectedRoute>
+                            } />
+                        </Routes>
+                    )}
                 </div>
             </main>
             <Toaster />

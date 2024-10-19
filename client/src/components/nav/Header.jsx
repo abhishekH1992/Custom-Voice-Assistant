@@ -3,8 +3,9 @@ import { useTheme } from "../../context/ThemeContext";
 import { SunIcon, MoonIcon } from 'lucide-react';
 import Icon from "../ui/Icon";
 import { TEMPLATE_ICON_COLOR } from "../../constant/colors";
+import { Skeleton } from "@nextui-org/react";
 
-const Header = ({name, icon}) => {
+const Header = ({name, icon, isLoading}) => {
     const { theme, toggleTheme } = useTheme();
 
     return (
@@ -17,7 +18,11 @@ const Header = ({name, icon}) => {
                         color={TEMPLATE_ICON_COLOR}
                     />
                 )}
-                <p className={`font-bold text-inherit ${icon ? 'ml-2' : ''}`}>{name}</p>
+                {isLoading ? (
+                    <Skeleton className="w-40 h-6" />
+                ) : (
+                    <p className={`font-bold text-inherit ${icon ? 'ml-2' : ''}`}>{name}</p>
+                )}
             </NavbarBrand>
             <NavbarContent justify="end">
                 <NavbarItem>
