@@ -2,15 +2,28 @@ const { openai, audioStreamChunkSize } = require('./openai.util');
 const fs = require('fs');
 const { Buffer } = require('buffer');
 
-const textCompletion = async(model, messages, stream = false) => {
-    const response =  await openai.chat.completions.create({
-        model: model,
-        messages: messages,
-        stream: stream,
-    });
+const textCompletion = async (model, messages, stream = false, options = {}) => {
+    const { signal } = options;
+    if (signal && signal.aborted) {
+        throw new Error('Request aborted before sending.');
+    }
+    try {
+        const response = await openai.chat.completions.create({
+            model: model,
+            messages: messages,
+            stream: stream,
+        });
 
-    return response;
-}
+        return response;
+    } catch (error) {
+        if (signal && signal.aborted) {
+            console.log('Request aborted');
+            return null;
+        }
+        throw error;
+    }
+};
+
 
 const transcribeAudio = async(filePath) => {
     try {

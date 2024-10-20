@@ -44,6 +44,15 @@ const wsLink = new GraphQLWsLink(createClient({
             authorization: token ? `Bearer ${token}` : "",
         }
     },
+    on: {
+        closed: () => {
+            console.log("WebSocket closed. Attempting to reconnect...");
+            // Reconnection logic can go here
+        },
+        error: (error) => {
+            console.error("WebSocket encountered an error:", error);
+        }
+    }
 }));
 
 const splitLink = split(

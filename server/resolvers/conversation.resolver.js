@@ -50,59 +50,59 @@ const conversationResolver = {
         },
         stopRecording: async (_, { templateId, messages }) => {
             if (activeStreams.has(templateId)) {
-                activeStreams.get(templateId).abort();
+                const abortController = activeStreams.get(templateId);
+                abortController.abort();
                 activeStreams.delete(templateId);
             }
+        
             const cacheKey = `template:${templateId}`;
+        
             try {
                 let template = await getRedisCached(cacheKey);
-                if(!template) {
+                if (!template) {
                     template = await Template.findByPk(templateId);
+                    if (!template) {
+                        console.error('Template not found');
+                        return false;
+                    }
                     await addRedisCached(cacheKey, template);
+                }
+                const abortController = new AbortController();
+                activeStreams.set(templateId, abortController);
+                if (abortController.signal.aborted) {
+                    console.log('Request aborted before sending.');
+                    return false;
                 }
                 const stream = await textCompletion(
                     template.model,
                     [
-                        { 'role': 'system', content: template.prompt },
+                        { role: 'system', content: template.prompt },
                         ...messages
                     ],
-                    true
+                    false
                 );
-                const abortController = new AbortController();
-                activeStreams.set(templateId, abortController);
-
-                const combinedStreamInstance = combinedStream(stream, templateId, abortController.signal);
-                try {
-                    for await (const part of combinedStreamInstance) {
-                        if (part.messageStreamed) {
-                            pubsub.publish('MESSAGE_STREAMED', {
-                                messageStreamed: part.messageStreamed,
-                                templateId 
-                            });
-                        } 
-                        else if (part.audioStreamed) {
-                            pubsub.publish('AUDIO_STREAMED', {
-                                audioStreamed: part.audioStreamed,
-                                templateId
-                            });
-                        }
-                    }
-                } catch (error) {
-                    if (error.name === 'AbortError') {
-                        console.log(`Stream for template ${templateId} was aborted`);
-                    } else {
-                        throw error;
-                    }
-                } finally {
-                    activeStreams.delete(templateId);
+                if (stream && !abortController.signal.aborted) {
+                    pubsub.publish('MESSAGE_STREAMED', {
+                        messageStreamed: { role: 'system', content: stream.choices[0].message.content || '' },
+                        templateId
+                    });
+                } else {
+                    console.log('Stream aborted or no content to publish.');
                 }
         
                 return true;
+        
             } catch (error) {
-                console.error('Error transcribing audio or generating response:', error);
+                // Handle specific abort errors separately
+                if (error.name === 'AbortError') {
+                    console.log('Request was aborted');
+                } else {
+                    console.error('Error transcribing audio or generating response:', error);
+                }
                 return false;
             }
         },
+        
         sendAudioData: (_, { data }) => {
             const audioData = Buffer.from(data, 'base64');
             audioChunks.push(audioData);

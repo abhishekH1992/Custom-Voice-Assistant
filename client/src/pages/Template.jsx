@@ -6,7 +6,7 @@ import { GET_TEMPLATE_BY_SLUG } from '../graphql/queries/templates.query';
 import { GET_ENABLE_TYPES } from '../graphql/queries/types.query';
 import ChatMessage from '../components/ui/ChatMessage';
 import ChatBottom from '../components/ui/ChatBottom';
-import { MESSAGE_SUBSCRIPTION, AUDIO_SUBSCRIPTION, STREAM_STOPPED_SUBSCRIPTION } from '../graphql/subscriptions/conversation.subscription';
+import { MESSAGE_SUBSCRIPTION, STREAM_STOPPED_SUBSCRIPTION } from '../graphql/subscriptions/conversation.subscription';
 import { SEND_MESSAGE, START_RECORDING, STOP_RECORDING, STOP_STREAMING } from '../graphql/mutations/conversation.mutation';
 import TypeSettingsModal from '../components/ui/TypeSettingsModal';
 import { SAVE_CHAT, DELETE_CHAT } from '../graphql/mutations/chat.mutation';
@@ -26,9 +26,6 @@ const Template = () => {
     const streamedMessageRef = useRef('');
     const chatContainerRef = useRef(null);
     const [isRecording, setIsRecording] = useState(false);
-    const audioRef = useRef(new Audio());
-    const audioQueue = useRef([]);
-    const isPlayingAudio = useRef(false);
     const [userStreamedContent, setUserStreamedContent] = useState('');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedType, setSelectedType] = useState(null);
@@ -43,10 +40,10 @@ const Template = () => {
     const vadRef = useRef(null);
     const [isContinuousMode, setIsContinuousMode] = useState(false);
     const messagesRef = useRef([]);
-    const isActivityDetected = useRef(false);
     const [currentType, setCurrentType] = useState();
     const messageStartTimeRef = useRef(null);
     const userStartTimeRef = useRef(null);
+    const [voices, setVoices] = useState([]);
 
     const { data, loading } = useQuery(GET_TEMPLATE_BY_SLUG, {
         variables: {
@@ -62,10 +59,9 @@ const Template = () => {
 
     useEffect(() => {
         if (enableTypes && enableTypes.types && enableTypes.types.length > 0) {
-            const firstType = enableTypes.types[0];
+            const firstType = enableTypes.types[2];
             setSelectedType(firstType);
             setCurrentType(firstType.name);
-            console.log(firstType.name);
         }
     }, [enableTypes]);
 
@@ -136,8 +132,7 @@ const Template = () => {
         variables: { templateId: data?.templateBySlug?.id },
         onSubscriptionData: ({ subscriptionData }) => {
             const { role, content: newContent } = subscriptionData?.data?.messageStreamed || {};
-            
-            if (newContent !== undefined && isActivityDetected.current === false) {
+            if (newContent !== undefined) {
                 if (streamedMessageRef.current === '') {
                     setIsTyping(false);
                     messageStartTimeRef.current = getCurrentTime();
@@ -150,7 +145,12 @@ const Template = () => {
                     timeStamp: messageStartTimeRef.current
                 });
                 isStreamingRef.current = true;
-            } else if (isStreamingRef.current && isActivityDetected.current === false) {
+    
+                // Play audio if enabled
+                if (selectedType?.isAudio && voices.length > 0) {
+                    playNextAudio(streamedMessageRef.current);
+                }
+            } else if (isStreamingRef.current) {
                 if (!isEmpty(streamedMessageRef)) {
                     setMessages(prev => [
                         ...prev, 
@@ -166,8 +166,59 @@ const Template = () => {
                 streamedMessageRef.current = '';
                 isStreamingRef.current = false;
             }
-        }        
+        }
     });
+
+    useEffect(() => {
+        const loadVoices = () => {
+            const availableVoices = window.speechSynthesis.getVoices();
+            if (availableVoices.length) {
+                setVoices(availableVoices);
+            }
+        };
+        loadVoices();
+        window.speechSynthesis.onvoiceschanged = loadVoices;
+    }, []);
+
+    const playNextAudio = useCallback((text) => {
+        if (!selectedType?.isAudio || !text) return;
+        window.speechSynthesis.cancel();
+    
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.rate = 1.1;
+        utterance.pitch = 1;
+        utterance.volume = 1;
+        const preferredVoice = voices.find(voice => voice.name.includes('Google UK English Male')) || voices[0];
+        if (preferredVoice) {
+            utterance.voice = preferredVoice;
+        } else {
+            console.log("Preferred voice not available");
+        }
+        // Start speaking the text
+        window.speechSynthesis.speak(utterance);
+        // Event listeners for end and error handling
+        utterance.onend = () => {
+            console.log('Speech synthesis completed');
+        };
+        utterance.onerror = (event) => {
+            window.speechSynthesis.cancel();
+            console.error('Speech synthesis error:', event.error);
+        };
+    
+    }, [selectedType?.isAudio, voices]);
+    
+
+    useEffect(() => {
+        const handleUserInteraction = () => {
+            window.speechSynthesis.cancel();
+        };
+        window.addEventListener('click', handleUserInteraction);
+        window.addEventListener('keydown', handleUserInteraction);
+        return () => {
+            window.removeEventListener('click', handleUserInteraction);
+            window.removeEventListener('keydown', handleUserInteraction);
+        };
+    }, []);    
 
     useEffect(() => {
         if (!isStreamingRef.current && !isEmpty(currentStreamedMessage)) {
@@ -184,26 +235,10 @@ const Template = () => {
         }
     }, [currentType, userStreamedContent]);
 
-    const { error: audioErr} = useSubscription(AUDIO_SUBSCRIPTION, {
-        skip: !data?.templateBySlug?.id,
-        variables: { templateId: data?.templateBySlug?.id },
-        onSubscriptionData: ({ subscriptionData }) => {
-            const { content } = subscriptionData?.data?.audioStreamed || {};
-            if(content && isActivityDetected.current === false) {
-                audioQueue.current.push(content);
-                if (!isPlayingAudio.current) {
-                    console.log(getCurrentTime());
-                    playNextAudio();
-                }
-            }
-        }
-    });
-
     const { error: stopStreamErr} = useSubscription(STREAM_STOPPED_SUBSCRIPTION, {
         skip: !data?.templateBySlug?.id,
         variables: { templateId: data?.templateBySlug?.id },
         onSubscriptionData: ({ subscriptionData }) => {
-            console.log(subscriptionData);
             const { templateId } = subscriptionData?.data?.streamStopped || {};
             if (templateId === data?.templateBySlug?.id) {
                 handleStreamStopped();
@@ -213,54 +248,8 @@ const Template = () => {
 
     useEffect(() => {
         if(msgErr) console.log('MESSAGE_STREAM: '+msgErr);
-        if(audioErr) console.log('AUDIO_STREAM: '+msgErr);
         if(stopStreamErr) console.log('STREAM_STOPPED: '+stopStreamErr);
     })
-
-    const playNextAudio = useCallback(() => {
-        if ((audioQueue.current.length > 0 && !selectedType?.isAutomatic && !selectedType?.isContinous) || (audioQueue.current.length > 0 && !isUserInitiatedStop && (selectedType?.isAutomatic || selectedType?.isContinous) && isActivityDetected.current === false)) {
-            isPlayingAudio.current = true;
-            const audioContent = audioQueue.current.shift();
-            const audioChunk = base64ToArrayBuffer(audioContent);
-            const audioFormats = ['audio/mpeg', 'audio/mp4', 'audio/webm', 'audio/ogg'];
-            const attemptPlay = (formatIndex) => {
-                if (formatIndex >= audioFormats.length) {
-                    console.error("Failed to play audio with all known formats");
-                    playNextAudio();
-                    return;
-                }
-
-                const blob = new Blob([audioChunk], { type: audioFormats[formatIndex] });
-                const url = URL.createObjectURL(blob);
-                
-                audioRef.current.src = url;
-                audioRef.current.play()
-                    .then(() => {
-                        console.log("Audio playing successfully with format:", audioFormats[formatIndex]);
-                        audioRef.current.onended = playNextAudio;
-                    })
-                    .catch(e => {
-                        console.warn(`Error playing audio with format ${audioFormats[formatIndex]}:`, e);
-                        URL.revokeObjectURL(url);
-                        attemptPlay(formatIndex + 1);
-                    });
-            };
-            attemptPlay(0);
-        } else {
-            setIsSystemAudioComplete(true);
-            isPlayingAudio.current = false;
-        }
-    }, [isUserInitiatedStop, selectedType]);
-
-    const base64ToArrayBuffer = (base64) => {
-        const binaryString = window.atob(base64);
-        const len = binaryString.length;
-        const bytes = new Uint8Array(len);
-        for (let i = 0; i < len; i++) {
-            bytes[i] = binaryString.charCodeAt(i);
-        }
-        return bytes.buffer;
-    };
 
     const sendMessageToServer = useCallback(async (messages) => {
         try {
@@ -357,13 +346,6 @@ const Template = () => {
         }
     }, [currentStreamedMessage, startRecording, currentType]);
 
-    const stopVoiceActivityDetection = useCallback(() => {
-        if (vadRef.current) {
-            vadRef.current.disconnect();
-            vadRef.current = null;
-        }
-    }, []);
-
     useEffect(() => {
         if (messages.length > 0) {
             messagesRef.current = messages;
@@ -371,33 +353,24 @@ const Template = () => {
     }, [messages]);
 
     const handleStreamStopped = useCallback(() => {
+        window.speechSynthesis.cancel();
         setIsRecording(false);
         setIsTyping(false);
         setIsCallActive(false);
         setIsContinuousMode(false);
         setIsUserInitiatedStop(true);
         setIsSystemAudioComplete(true);
-        
-        if (isStreamingRef.current) {
-            isStreamingRef.current = false;
-            setCurrentStreamedMessage({});
-            streamedMessageRef.current = '';
-        }
+        console.log('Asked Speech To Stop');
+    }, []);
 
-        audioQueue.current = [];
-        if (audioRef.current) {
-            audioRef.current.pause();
-            audioRef.current.src = '';
-        }
-        isPlayingAudio.current = false;
-
-        stopVoiceActivityDetection();
-    }, [stopVoiceActivityDetection]);
+    useEffect(() => {
+        handleStreamStopped();
+    }, []);
 
     const handleStopRecording = useCallback(async(isUserInitiated = false) => {
         setIsRecording(false);
         if(selectedType?.isContinous && isUserInitiated) {
-            stopVoiceActivityDetection();
+            handleStreamStopped();
             setIsContinuousMode(false);
         }
         setIsUserInitiatedStop(isUserInitiated);
@@ -415,12 +388,11 @@ const Template = () => {
         if (isUserInitiated && (selectedType?.isAutomatic || selectedType?.isContinous)) {
             handleStreamStopped();
         }
-    }, [selectedType?.isContinous, selectedType?.isAutomatic, stopVoiceActivityDetection, stopRecording, data?.templateBySlug?.id, handleStreamStopped]);
+    }, [selectedType?.isContinous, selectedType?.isAutomatic, handleStreamStopped, stopRecording, data?.templateBySlug?.id, handleStreamStopped]);
 
     useEffect(() => {
         let recordingTimer;
         let countdownTimer;
-        console.log(isCallActive, selectedType?.isAutomatic);
         if (isCallActive && selectedType && selectedType.isAutomatic && !isUserInitiatedStop) {
             if (isRecording) {
                 setRemainingTime(recordingDuration);
@@ -520,60 +492,48 @@ const Template = () => {
         window.location.assign(`/analytics/${templateSlug}/${savedChatId}`);
     }
 
-    const stopAudioPlayback = useCallback(() => {
-        isActivityDetected.current = true;
-        audioQueue.current = [];
-        if (audioRef.current) {
-            audioRef.current.pause();
-            audioRef.current.src = '';
-        }
-        isPlayingAudio.current = false;
-        setIsSystemAudioComplete(true);
-        setIsCallActive(true);
-        setIsUserInitiatedStop(false);
-    }, []);
-
     const startVoiceActivityDetection = useCallback(() => {
         if (vadRef.current) return;
         setIsRecording(true);
+    
         navigator.mediaDevices.getUserMedia({ audio: true })
             .then(stream => {
                 const audioContext = new AudioContext();
-
                 vadRef.current = vad(audioContext, stream, {
                     onVoiceStart: () => {
-                        console.log('Start: '+isActivityDetected.current);
-                        stopAudioPlayback();
+                        console.log('Voice Activity Detected');
+                        
+                        // Handle stopping the speech synthesis when voice is detected
+                        if (window.speechSynthesis.speaking) {
+                            window.speechSynthesis.cancel();
+                            console.log('Speech Synthesis paused due to voice activity.');
+                        }
+    
+                        handleStreamStopped();
                         handleStartRecording();
                     },
                     onVoiceStop: () => {
-                        // setTimeout(() => {
-                        //     isActivityDetected.current = false;
-                        // }, 100);
-                        isActivityDetected.current = false;
-                        console.log('Stopped: '+isActivityDetected.current);
                         setIsCallActive(false);
-                        handleStopRecording(false);
+                        console.log('Voice Activity Stopped');
+    
+                        // Resume speech synthesis when voice stops
+                        if (window.speechSynthesis.paused) {
+                            window.speechSynthesis.resume();
+                            console.log('Speech Synthesis resumed after voice activity stopped.');
+                        }
+    
+                        // Check if there are messages, only send if we have valid content
+                        if (messagesRef.current.length) handleStopRecording(false);
                     },
-                    // fftSize: 2048,
-                    // bufferLen: 2048,
                     smoothingTimeConstant: 0.9,
-                    // minCaptureFreq: 150,
-                    // maxCaptureFreq: 3500,
-                    noiseCaptureDuration: 200,
+                    noiseCaptureDuration: 300,
                     minNoiseLevel: 0.4,
                     maxNoiseLevel: 0.8,
-                    // avgNoiseMultiplier: 1.4,
                 });
             })
             .catch(err => console.error('Error accessing microphone:', err));
-    }, [handleStartRecording, handleStopRecording, stopAudioPlayback]);
-
-    useEffect(() => {
-        return () => {
-            stopVoiceActivityDetection();
-        };
-    }, [stopVoiceActivityDetection]);
+    }, [handleStartRecording, handleStopRecording, handleStreamStopped]);
+    
 
     const handleStopStreaming = useCallback(async () => {
         try {

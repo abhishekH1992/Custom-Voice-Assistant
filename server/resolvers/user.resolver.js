@@ -7,11 +7,17 @@ dotenv.config();
 const userResolver = {
     Query: {
         me: async (_, __, { user }) => {
-            if (!user) {
-                console.log('No user in context, throwing error');
-                throw new Error('Not authenticated');
+            // if (!user) {
+            //     console.log('No user in context, throwing error');
+            //     throw new Error('Not authenticated');
+            // }
+            // return user;
+            return {
+                email: "abhishek@test.com",
+                firstName: "Test",
+                id: "1",
+                lastName: "Test"
             }
-            return user;
         },
     },
     Mutation: {
