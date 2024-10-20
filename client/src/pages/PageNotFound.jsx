@@ -1,33 +1,17 @@
-import { Button, Text, Container, Row, Col } from "@nextui-org/react";
-import { Link } from "@nextui-org/react";
+import { Button, Link } from "@nextui-org/react";
 
 const PageNotFound = () => {
     return (
-        <Container
-            display="flex"
-            justify="center"
-            alignItems="center"
-            css={{ height: "100vh", textAlign: "center" }}
-        >
-            <Row justify="center">
-                <Col css={{ textAlign: "center" }}>
-                    <Text h1 size={70} weight="bold" css={{ lineHeight: 1.2 }}>
-                        404
-                    </Text>
-                    <Text h3 size={20} css={{ marginBottom: "$10" }}>
-                        Oops! The page you&apos;re looking for doesn&apos;t exist.
-                    </Text>
-                    <Text h5 size={16} css={{ marginBottom: "$15" }}>
-                        It seems like you&apos;ve reached a broken link or the page has moved.
-                    </Text>
-                    <Link href="/" passHref>
-                        <Button shadow color="gradient" auto>
-                        Go back to Home
-                        </Button>
-                    </Link>
-                </Col>
-            </Row>
-        </Container>
+        <div className="flex flex-col items-center justify-center h-screen text-center">
+            <h1 className="text-7xl font-bold mb-4">404</h1>
+            <p className="text-xl mb-2">Oops! The page you&apos;re looking for doesn&apos;t exist.</p>
+            <p className="text-lg mb-8">It seems like you&apos;ve reached a broken link or the page has moved.</p>
+            <Link href="/" passHref>
+                <Button shadow color="secondary" auto>
+                Go back to Home
+                </Button>
+            </Link>
+        </div>
     );
 }
 
