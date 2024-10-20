@@ -1,5 +1,5 @@
 import { Button, Text, Container, Row, Col } from "@nextui-org/react";
-import Link from "next/link";
+import { Link } from "@nextui-org/react";
 
 const PageNotFound = () => {
     return (
