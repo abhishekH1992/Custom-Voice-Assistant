@@ -65,19 +65,16 @@ const addRedisCached = async (cacheKey, data, lifetime = process.env.CACHE_LIFE_
 
     try {
         const namespacedKey = NAMESPACE + cacheKey;
-        if (isProduction) {
-            await client.set(namespacedKey, JSON.stringify(data), {
-                ex: parseInt(lifetime, 10) || 3600 // Default to 1 hour if parsing fails
-            });
-        } else {
-            await client.set(namespacedKey, JSON.stringify(data), 'EX', parseInt(lifetime, 10) || 3600);
-        }
+        const ttl = parseInt(lifetime, 10) || 3600;
+        await client.set(namespacedKey, JSON.stringify(data), 'EX', ttl);
+
         return true;
     } catch (error) {
         console.error('Error in addRedisCached:', error);
         return false;
     }
 };
+
 
 const clearCache = async (pattern) => {
     const client = await getRedisClient();

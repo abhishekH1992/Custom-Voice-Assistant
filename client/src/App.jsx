@@ -12,6 +12,7 @@ import Register from './pages/auth/Register';
 import { Toaster } from "react-hot-toast"
 import Feedback from './pages/Feedback';
 import SavedChats from './pages/SavedChats';
+import PageNotFound from './pages/PageNotFound';
 import AuthSkeleton from './components/ui/skeleton/AuthSkeleton';
 import CardSkeleton from './components/ui/skeleton/CardSkeleton';
 import Header from './components/nav/Header';
@@ -101,6 +102,11 @@ function App() {
                             <Route path='/analytics/:templateSlug/:savedChatId' element={
                                 <ProtectedRoute>
                                     <Feedback />
+                                </ProtectedRoute>
+                            } />
+                            <Route path='*' element={
+                                <ProtectedRoute>
+                                    <PageNotFound />
                                 </ProtectedRoute>
                             } />
                         </Routes>
