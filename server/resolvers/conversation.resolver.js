@@ -57,7 +57,7 @@ const conversationResolver = {
             try {
                 let template = await getRedisCached(cacheKey);
                 if(!template) {
-                    let template = await Template.findByPk(templateId);
+                    template = await Template.findByPk(templateId);
                     await addRedisCached(cacheKey, template);
                 }
                 const stream = await textCompletion(
@@ -70,8 +70,6 @@ const conversationResolver = {
                 );
                 const abortController = new AbortController();
                 activeStreams.set(templateId, abortController);
-
-                console.log(stream);
 
                 const combinedStreamInstance = combinedStream(stream, templateId, abortController.signal);
                 console.log(combinedStreamInstance);

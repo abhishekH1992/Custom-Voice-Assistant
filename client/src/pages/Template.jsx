@@ -15,6 +15,7 @@ import { ME_QUERY } from '../graphql/queries/me.query';
 import toast from "react-hot-toast";
 import { GET_SAVED_CHAT } from '../graphql/queries/chat.query';
 import vad from 'voice-activity-detection';
+import Loader from '../components/ui/Loader';
 
 const Template = () => {
     const { templateSlug, savedChatId } = useParams();
@@ -605,7 +606,12 @@ const Template = () => {
         }
     }, [handleStartRecording, handleStopStreaming, selectedType, startVoiceActivityDetection]);
 
-    if (loading || typeLoading || savedChatLoading) return <div className="flex items-center justify-center h-screen">Loading...</div>;
+    const loaderItems = [
+        { text: 'Getting your chats' },
+        { text: 'Doing clever things' },
+    ];
+
+    if (loading || typeLoading || savedChatLoading) return <Loader loaderItems={loaderItems} />;
 
     return (
         <>

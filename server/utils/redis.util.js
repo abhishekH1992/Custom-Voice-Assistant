@@ -51,7 +51,6 @@ const getRedisCached = async (cacheKey) => {
     try {
         const namespacedKey = NAMESPACE + cacheKey;
         const cachedData = await client.get(namespacedKey);
-        console.log('cachedData', cachedData);
         return cachedData ? JSON.parse(cachedData) : null;
     } catch (error) {
         console.error('Error in getRedisCached:', error);
