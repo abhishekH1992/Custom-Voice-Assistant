@@ -311,7 +311,9 @@ const Template = () => {
             recognition.onresult = (event) => {
                 for (let i = 0; i < event.results.length; i++) {
                     const transcript = event.results[i][0].transcript;
+                    console.log(transcript);
                     if (event.results[i].isFinal) {
+                        console.log(transcript);
                         setUserStreamedContent((prev) => prev + transcript + ' ');
                         messagesRef.current = [
                             ...messagesRef.current,
@@ -353,6 +355,10 @@ const Template = () => {
     }, [messages]);
 
     const handleStreamStopped = useCallback(() => {
+        // if (vadRef.current) {
+        //     vadRef.current.disconnect();
+        //     vadRef.current = null;
+        // }
         window.speechSynthesis.cancel();
         setIsRecording(false);
         setIsTyping(false);
@@ -523,7 +529,8 @@ const Template = () => {
                         }
     
                         // Check if there are messages, only send if we have valid content
-                        if (messagesRef.current.length) handleStopRecording(false);
+                        if (messagesRef.current.length) 
+                            handleStopRecording(false);
                     },
                     smoothingTimeConstant: 0.9,
                     noiseCaptureDuration: 300,

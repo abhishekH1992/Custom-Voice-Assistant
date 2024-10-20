@@ -58,15 +58,15 @@ const conversationResolver = {
             const cacheKey = `template:${templateId}`;
         
             try {
-                let template = await getRedisCached(cacheKey);
-                if (!template) {
-                    template = await Template.findByPk(templateId);
-                    if (!template) {
-                        console.error('Template not found');
-                        return false;
-                    }
-                    await addRedisCached(cacheKey, template);
-                }
+                // let template = await getRedisCached(cacheKey);
+                // if (!template) {
+                //     template = await Template.findByPk(templateId);
+                //     if (!template) {
+                //         console.error('Template not found');
+                //         return false;
+                //     }
+                //     await addRedisCached(cacheKey, template);
+                // }
                 const abortController = new AbortController();
                 activeStreams.set(templateId, abortController);
                 if (abortController.signal.aborted) {
@@ -74,9 +74,9 @@ const conversationResolver = {
                     return false;
                 }
                 const stream = await textCompletion(
-                    template.model,
+                    'gpt-4o',
                     [
-                        { role: 'system', content: template.prompt },
+                        { role: 'system', content: 'You are helpful AI' },
                         ...messages
                     ],
                     false
