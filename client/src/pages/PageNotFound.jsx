@@ -8,7 +8,7 @@ const PageNotFound = () => {
             <p className="text-lg mb-8">It seems like you&apos;ve reached a broken link or the page has moved.</p>
             <Link href="/" passHref>
                 <Button shadow color="secondary" auto>
-                Go back to Home
+                    Go back to Home
                 </Button>
             </Link>
         </div>
