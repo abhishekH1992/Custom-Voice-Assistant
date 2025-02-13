@@ -145,8 +145,6 @@ const Template = () => {
                     timeStamp: messageStartTimeRef.current
                 });
                 isStreamingRef.current = true;
-    
-                // Play audio if enabled
                 if (selectedType?.isAudio && voices.length > 0) {
                     playNextAudio(streamedMessageRef.current);
                 }
