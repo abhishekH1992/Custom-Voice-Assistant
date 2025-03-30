@@ -2,11 +2,11 @@
     "name": "akoplus-react",
     "version": "1.0.0",
     "description": "ReactAPP",
-    "main": "server/index.js",
+    "main": "index.js",
     "scripts": {
-      "start": "node server/index.js",
-      "dev": "nodemon server/index.js",
-      "build": "npm install && npx sequelize-cli db:migrate && npx sequelize-cli db:seed:all"
+      "start": "node index.js",
+      "dev": "nodemon index.js",
+      "build": "npm install"
     },
     "keywords": [],
     "author": "",
